@@ -7,6 +7,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::time::Instant;
 
 use serde::Serialize;
 
@@ -37,6 +38,9 @@ pub struct SessionNode {
     /// iTerm2：「視窗 N · 分頁 M」；Terminal.app：「視窗 N」。只用於顯示。
     pub location_hint: String,
     pub window_id: WindowId,
+    /// 視窗由前到後的序號（1 起算），聚焦或切換視窗後會改變。
+    #[serde(skip)]
+    pub window_index: u32,
     pub tab_index: u32,
     /// 最近一次探索是否仍存在。
     pub alive: bool,
@@ -62,6 +66,8 @@ pub struct MergeOutcome {
 #[derive(Debug, Clone, Default)]
 pub struct Registry {
     nodes: Vec<SessionNode>,
+    /// 經由 Cue 聚焦過的視窗與最後聚焦時間，用來在多個候選視窗中挑選。
+    focus_history: HashMap<WindowId, Instant>,
 }
 
 impl Registry {
@@ -75,6 +81,15 @@ impl Registry {
 
     pub fn get(&self, id: &str) -> Option<&SessionNode> {
         self.nodes.iter().find(|n| n.id == id)
+    }
+
+    pub fn focus_history(&self) -> &HashMap<WindowId, Instant> {
+        &self.focus_history
+    }
+
+    /// 記錄視窗剛被聚焦。
+    pub fn record_focus(&mut self, window_id: WindowId) {
+        self.focus_history.insert(window_id, Instant::now());
     }
 
     /// 合併一輪探索結果。
@@ -117,6 +132,7 @@ impl Registry {
                 node.tty = d.tty.clone();
                 node.location_hint = location_hint(d);
                 node.window_id = d.window_id;
+                node.window_index = d.window_index;
                 node.tab_index = d.tab_index;
                 if !node.alive {
                     // 同一身分再次出現（例如探索暫時失敗後恢復），視為新的閒置工作階段。
@@ -142,6 +158,7 @@ impl Registry {
                     label: None,
                     location_hint: location_hint(d),
                     window_id: d.window_id,
+                    window_index: d.window_index,
                     tab_index: d.tab_index,
                     alive: true,
                 });
@@ -163,6 +180,11 @@ impl Registry {
                 .filter(|l| !l.trim().is_empty());
             node.default_name = default_name(&node.kind);
         }
+
+        // 視窗關閉後其 ID 不會再出現，留著只會累積。
+        let open_windows: HashSet<WindowId> =
+            self.nodes.iter().filter(|n| n.alive).map(|n| n.window_id).collect();
+        self.focus_history.retain(|w, _| open_windows.contains(w));
 
         let config_changed = sync_config(&self.nodes, config);
         MergeOutcome { nodes_changed: self.nodes != before, config_changed }
@@ -637,5 +659,22 @@ mod tests {
         assert_eq!(v["locationHint"], "視窗 1 · 分頁 1");
         assert_eq!(v["status"], "idle");
         assert!(v.get("key").is_none());
+        assert!(v.get("windowIndex").is_none());
+    }
+
+    #[test]
+    fn focus_history_drops_closed_windows() {
+        let mut reg = Registry::new();
+        let mut cfg = config();
+        let procs = Procs::default()
+            .with("ttys001", 11, SessionKind::Zsh, Some(WS_A))
+            .with("ttys002", 12, SessionKind::Zsh, Some(WS_A));
+        merge(&mut reg, &mut cfg, &[iterm("A", "ttys001", 1, 1), iterm("B", "ttys002", 2, 1)], &procs);
+        reg.record_focus(101);
+        reg.record_focus(102);
+
+        merge(&mut reg, &mut cfg, &[iterm("A", "ttys001", 1, 1)], &procs);
+        assert!(reg.focus_history().contains_key(&101));
+        assert!(!reg.focus_history().contains_key(&102));
     }
 }

@@ -3,6 +3,7 @@ pub mod commands;
 pub mod config;
 pub mod discovery;
 pub mod error;
+pub mod layout;
 pub mod model;
 pub mod osascript;
 pub mod process;

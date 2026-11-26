@@ -21,18 +21,20 @@ pub fn get_snapshot(state: State<'_, AppState>) -> Snapshot {
 #[tauri::command]
 pub async fn focus_session(app: AppHandle, id: String) -> Result<(), CueError> {
     let state = app.state::<AppState>();
-    let key = {
+    let (key, window_id) = {
         let registry = lock(&state.registry);
         let node = registry.get(&id).ok_or(CueError::ObjectNotFound)?;
         if !node.alive {
             return Err(CueError::SessionExited);
         }
-        node.key.clone()
+        (node.key.clone(), node.window_id)
     };
     let backend = state.backend();
     tauri::async_runtime::spawn_blocking(move || backend.focus(&key))
         .await
-        .map_err(|e| CueError::Io(format!("聚焦工作異常結束：{e}")))?
+        .map_err(|e| CueError::Io(format!("聚焦工作異常結束：{e}")))??;
+    lock(&state.registry).record_focus(window_id);
+    Ok(())
 }
 
 /// 加入工作區：驗證為資料夾、取 realpath、去重。回傳工作區 id（已存在時回傳既有的 id）。
