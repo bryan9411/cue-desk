@@ -1,7 +1,10 @@
+import { ask } from "@tauri-apps/plugin-dialog";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useEffect, useId, useState } from "react";
-import { setWorkspaceCollapsed } from "../../ipc/api";
+import { createSession, removeWorkspace, setWorkspaceCollapsed, toCueError } from "../../ipc/api";
 import { useCue } from "../../store/useCue";
 import type { CueError, SessionNode as Node, Workspace } from "../../types";
+import { ContextMenu, useContextMenu, type MenuEntry } from "../ContextMenu";
 import { ChevronDown, ChevronRight } from "../icons/Icons";
 import { SessionNode } from "./SessionNode";
 
@@ -10,13 +13,16 @@ interface Props {
   sessions: Node[];
 }
 
-/** 工作區節點：摺疊箭頭、名稱、子節點數；收合狀態寫回設定檔。 */
+/** 工作區節點：摺疊箭頭、名稱、子節點數；收合狀態寫回設定檔，右鍵開啟操作選單。 */
 export function WorkspaceNode({ workspace, sessions }: Props) {
   const setLastError = useCue((s) => s.setLastError);
+  const openCreateModal = useCue((s) => s.openCreateModal);
+  const openZshLabel = useCue((s) => (s.backend?.id === "terminal" ? "在終端機開一個 zsh" : "在 iTerm2 開一個 zsh"));
   // 先在畫面上反映，快照回來後以 Rust 的值為準。
   const [collapsed, setCollapsed] = useState(workspace.collapsed);
   useEffect(() => setCollapsed(workspace.collapsed), [workspace.collapsed]);
   const listId = useId();
+  const menu = useContextMenu();
 
   const toggle = () => {
     const next = !collapsed;
@@ -27,6 +33,34 @@ export function WorkspaceNode({ workspace, sessions }: Props) {
     });
   };
 
+  const report = (e: unknown) => setLastError(toCueError(e));
+
+  const confirmRemove = async () => {
+    const ok = await ask(
+      `「${workspace.name}」會從 Cue 的清單移除，不會刪除資料夾或其中任何檔案。\n\n其中的終端機會依目前所在的資料夾重新歸類。`,
+      { title: "移除工作區", kind: "warning", okLabel: "移除", cancelLabel: "取消" },
+    );
+    if (ok) await removeWorkspace(workspace.id);
+  };
+
+  const entries: MenuEntry[] = [
+    { type: "item", label: "新增工作階段…", onSelect: () => openCreateModal(workspace.id) },
+    { type: "item", label: "在 Finder 開啟", onSelect: () => revealItemInDir(workspace.path).catch(report) },
+    {
+      type: "item",
+      label: openZshLabel,
+      // 固定開新視窗：分頁可能落在其他工作區的視窗裡。
+      onSelect: () => createSession(workspace.id, "zsh", null, "newWindow").catch(report),
+    },
+    { type: "separator" },
+    {
+      type: "item",
+      label: "移除工作區…",
+      note: "不會刪除任何檔案",
+      onSelect: () => confirmRemove().catch(report),
+    },
+  ];
+
   const Chevron = collapsed ? ChevronRight : ChevronDown;
 
   return (
@@ -34,6 +68,7 @@ export function WorkspaceNode({ workspace, sessions }: Props) {
       <button
         type="button"
         onClick={toggle}
+        {...menu.triggerProps}
         aria-expanded={!collapsed}
         aria-controls={listId}
         title={workspace.path}
@@ -47,6 +82,9 @@ export function WorkspaceNode({ workspace, sessions }: Props) {
           {sessions.length}
         </span>
       </button>
+      {menu.anchor && (
+        <ContextMenu anchor={menu.anchor} title={workspace.name} entries={entries} onClose={menu.close} />
+      )}
       {!collapsed && (
         <ul id={listId} className="ml-[11px] mt-0.5 border-l border-border-subtle pl-1">
           {sessions.length === 0 ? (

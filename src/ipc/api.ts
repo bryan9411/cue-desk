@@ -45,3 +45,62 @@ export function addWorkspace(path: string): Promise<string> {
 export function setWorkspaceCollapsed(id: string, collapsed: boolean): Promise<void> {
   return call<void>("set_workspace_collapsed", { id, collapsed });
 }
+
+/** 可以建立的工作階段類型；指令名稱由 Rust 端的固定列舉決定。 */
+export type CreatableKind = "claude" | "gemini" | "zsh";
+
+/** 建立工作階段的開啟方式。 */
+export type OpenMode = "newWindow" | "newTab" | "aiTopZshBottom" | "aiLeftZshRight";
+
+/** 就地補開 zsh 的位置。 */
+export type SplitDirection = "right" | "below";
+
+/** 在工作區建立工作階段，回傳新節點 id。後端不支援的開啟方式以 `unsupported` reject。 */
+export function createSession(
+  workspaceId: string,
+  kind: CreatableKind,
+  label: string | null,
+  mode: OpenMode,
+): Promise<string> {
+  return call<string>("create_session", { workspaceId, kind, label, mode });
+}
+
+/** 在工作階段旁補開同工作區的 zsh；後端改開新視窗時回傳提示文字。 */
+export function splitZsh(sessionId: string, direction: SplitDirection): Promise<string | null> {
+  return call<string | null>("split_zsh", { sessionId, direction });
+}
+
+/** 重新命名工作階段；空字串清除標籤，回到預設名稱。 */
+export function renameSession(id: string, label: string): Promise<void> {
+  return call<void>("rename_session", { id, label });
+}
+
+/** 關閉工作階段；程式仍在執行時由終端機自己詢問。 */
+export function closeSession(id: string): Promise<void> {
+  return call<void>("close_session", { id });
+}
+
+/** 以原本的類型與資料夾重新開啟已結束的節點，回傳新節點 id。 */
+export function reopenSession(id: string): Promise<string> {
+  return call<string>("reopen_session", { id });
+}
+
+/** 移除已結束的節點與它的標籤紀錄。 */
+export function removeNode(id: string): Promise<void> {
+  return call<void>("remove_node", { id });
+}
+
+/** 以未歸類工作階段的 cwd 加入工作區，回傳工作區 id。 */
+export function setAsWorkspace(sessionId: string): Promise<string> {
+  return call<string>("set_as_workspace", { sessionId });
+}
+
+/** 不再把這個工作階段列入未歸類區。 */
+export function ignoreSession(sessionId: string): Promise<void> {
+  return call<void>("ignore_session", { sessionId });
+}
+
+/** 從清單移除工作區，不刪除任何檔案。 */
+export function removeWorkspace(id: string): Promise<void> {
+  return call<void>("remove_workspace", { id });
+}

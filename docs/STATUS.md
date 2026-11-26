@@ -73,7 +73,7 @@
   - [x] 3-2-02b feat: 關閉工作階段
   - [x] 3-2-03 feat: 重新開啟、移除與未歸類操作
 - [ ] **slice-3-3 選單與建立 Modal** → `docs/slices/slice-3-3.md`
-  - [ ] 3-3-01 feat: 右鍵選單與節點操作
+  - [x] 3-3-01 feat: 右鍵選單與節點操作
   - [ ] 3-3-02 feat: 建立工作階段 Modal 與多 AI 防呆
 - [ ] **slice-3-4 Git 分支監聽** → `docs/slices/slice-3-4.md`
   - [ ] 3-4-01 feat: 解析 Git 目錄與 HEAD

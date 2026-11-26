@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { BackendInfo, CueError, SessionNode, Snapshot, Workspace } from "../types";
+import type { BackendInfo, Capabilities, CueError, SessionNode, Snapshot, Workspace } from "../types";
 
 // 所有 session 狀態更新只經由 applySnapshot()，不要在別處直接改 sessions。
 export interface CueState {
@@ -13,10 +13,14 @@ export interface CueState {
   backend: BackendInfo | null;
   /** 最近一次全域錯誤（例如無法取得快照）；個別節點的操作錯誤由元件自行顯示。 */
   lastError: CueError | null;
+  /** 建立工作階段 Modal 要預選的工作區；`null` 為未開啟。 */
+  createModal: { workspaceId: string } | null;
 
   /** 以 Rust 送來的完整快照取代目前狀態。 */
   applySnapshot: (snapshot: Snapshot) => void;
   setLastError: (error: CueError | null) => void;
+  openCreateModal: (workspaceId: string) => void;
+  closeCreateModal: () => void;
 }
 
 export const useCue = create<CueState>()((set) => ({
@@ -25,6 +29,7 @@ export const useCue = create<CueState>()((set) => ({
   unclassified: [],
   backend: null,
   lastError: null,
+  createModal: null,
 
   applySnapshot: (snapshot) => {
     const sessions: Record<string, SessionNode> = {};
@@ -37,6 +42,8 @@ export const useCue = create<CueState>()((set) => ({
     });
   },
   setLastError: (lastError) => set({ lastError }),
+  openCreateModal: (workspaceId) => set({ createModal: { workspaceId } }),
+  closeCreateModal: () => set({ createModal: null }),
 }));
 
 // ---- 衍生資料 ----
@@ -96,6 +103,9 @@ const unclassifiedMemo = memoizeLast(pickUnclassified);
 
 /** 依工作區分組並排序的節點。 */
 export const selectWorkspaceGroups = (s: CueState): WorkspaceGroup[] => groupMemo(s.workspaces, s.sessions);
+
+/** 目前後端支援的操作；尚未取得快照前為 `null`。 */
+export const selectCapabilities = (s: CueState): Capabilities | null => s.backend?.capabilities ?? null;
 
 /** 「未歸類」區的節點。 */
 export const selectUnclassified = (s: CueState): SessionNode[] => unclassifiedMemo(s.unclassified, s.sessions);
