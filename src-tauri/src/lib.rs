@@ -1,17 +1,7 @@
 pub mod error;
+pub mod model;
 pub mod osascript;
-
-pub mod terminal {
-    /// 固定的 AppleScript 腳本原文。變動資料一律經由 `on run argv` 傳入。
-    pub mod scripts {
-        /// 列出 iTerm2 所有窗格；iTerm2 未執行時回傳空字串。
-        pub const ITERM2_DISCOVER: &str =
-            include_str!("terminal/scripts/iterm2_discover.applescript");
-        /// 列出 Terminal.app 所有分頁；Terminal.app 未執行時回傳空字串。
-        pub const TERMINAL_APP_DISCOVER: &str =
-            include_str!("terminal/scripts/terminal_app_discover.applescript");
-    }
-}
+pub mod terminal;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

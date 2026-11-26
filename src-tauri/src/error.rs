@@ -25,6 +25,8 @@ pub enum CueError {
     Io(String),
     /// 其他腳本錯誤，內容為 stderr 摘要。
     Script(String),
+    /// 目前的終端機後端不支援這個操作。
+    Unsupported,
 }
 
 impl CueError {
@@ -37,6 +39,7 @@ impl CueError {
             CueError::Timeout => "timeout",
             CueError::Io(_) => "io",
             CueError::Script(_) => "script",
+            CueError::Unsupported => "unsupported",
         }
     }
 
@@ -82,6 +85,7 @@ impl fmt::Display for CueError {
             CueError::Timeout => write!(f, "終端機腳本執行逾時"),
             CueError::Io(msg) => write!(f, "無法執行 osascript：{msg}"),
             CueError::Script(msg) => write!(f, "終端機腳本錯誤：{msg}"),
+            CueError::Unsupported => write!(f, "目前的終端機不支援這個操作"),
         }
     }
 }
@@ -142,5 +146,9 @@ mod tests {
         let json = serde_json::to_value(CueError::Timeout).unwrap();
         assert_eq!(json["kind"], "timeout");
         assert_eq!(json["message"], "終端機腳本執行逾時");
+
+        let json = serde_json::to_value(CueError::Unsupported).unwrap();
+        assert_eq!(json["kind"], "unsupported");
+        assert_eq!(json["message"], "目前的終端機不支援這個操作");
     }
 }
