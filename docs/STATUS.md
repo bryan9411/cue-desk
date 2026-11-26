@@ -77,7 +77,7 @@
   - [x] 3-3-02a feat: 快照帶出建立工作階段的預設開啟方式
   - [x] 3-3-02b feat: 建立工作階段 Modal 與多 AI 防呆
 - [ ] **slice-3-4 Git 分支監聽** → `docs/slices/slice-3-4.md`
-  - [ ] 3-4-01 feat: 解析 Git 目錄與 HEAD
+  - [x] 3-4-01 feat: 解析 Git 目錄與 HEAD
   - [ ] 3-4-02 feat: 以 notify 監聽分支變化
   - [ ] 3-4-03 feat: 側邊欄分支徽章
 - [ ] **slice-3-5 拖放與派工** → `docs/slices/slice-3-5.md`
