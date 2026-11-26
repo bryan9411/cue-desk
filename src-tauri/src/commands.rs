@@ -242,6 +242,7 @@ pub fn remove_workspace(app: AppHandle, id: String) -> Result<(), CueError> {
             return Err(CueError::WorkspaceNotFound);
         }
         state.save_config(&config);
+        state.sync_git(&config);
         lock(&state.registry).reattribute(&workspace_roots(&config));
     }
     discovery::publish(&app);
@@ -414,6 +415,7 @@ fn add_workspace_path(app: &AppHandle, path: &Path) -> Result<String, CueError> 
         let result = insert_workspace(&mut config, path)?;
         if result.1 {
             state.save_config(&config);
+            state.sync_git(&config);
             lock(&state.registry).reattribute(&workspace_roots(&config));
         }
         result

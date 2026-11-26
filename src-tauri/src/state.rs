@@ -3,6 +3,7 @@
 //! Rust 端是工作階段狀態的單一真相；前端只透過 [`Snapshot`] 取得狀態。
 //! 同時需要設定檔與登錄時，一律**先鎖 `config` 再鎖 `registry`**，避免死結。
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, RwLock};
 
@@ -11,6 +12,7 @@ use tokio::sync::Notify;
 
 use crate::attribution::WorkspaceRoots;
 use crate::config::{self, ConfigWriter, CueConfig, TerminalBackendPref};
+use crate::git::{Branch, GitWatch};
 use crate::registry::{Registry, SessionNode};
 use crate::terminal::detect::{self, BackendPref, BackendSelection, FallbackReason, TerminalApp};
 use crate::terminal::iterm2::ITerm2Backend;
@@ -50,6 +52,9 @@ pub struct WorkspaceView {
     pub path: PathBuf,
     pub name: String,
     pub collapsed: bool,
+    /// 分支顯示字串；非 Git 時為 `None`。
+    pub branch: Option<String>,
+    pub detached: bool,
 }
 
 /// 前端需要的完整狀態。
@@ -68,16 +73,26 @@ pub struct Snapshot {
 }
 
 /// 依設定檔與登錄組出快照（純函式，方便測試）。
-pub fn build_snapshot(config: &CueConfig, registry: &Registry, backend: BackendInfo) -> Snapshot {
+pub fn build_snapshot(
+    config: &CueConfig,
+    registry: &Registry,
+    branches: &HashMap<String, Branch>,
+    backend: BackendInfo,
+) -> Snapshot {
     Snapshot {
         workspaces: config
             .workspaces
             .iter()
-            .map(|w| WorkspaceView {
-                id: w.id.clone(),
-                path: w.path.clone(),
-                name: w.name.clone(),
-                collapsed: w.collapsed,
+            .map(|w| {
+                let branch = branches.get(&w.id).unwrap_or(&Branch::NotGit);
+                WorkspaceView {
+                    id: w.id.clone(),
+                    path: w.path.clone(),
+                    name: w.name.clone(),
+                    collapsed: w.collapsed,
+                    branch: branch.label(),
+                    detached: branch.is_detached(),
+                }
             })
             .collect(),
         sessions: registry.nodes().to_vec(),
@@ -114,6 +129,8 @@ pub struct AppState {
     pub config: Mutex<CueConfig>,
     pub registry: Mutex<Registry>,
     pub backend: RwLock<Arc<dyn TerminalBackend>>,
+    /// 各工作區的分支監聽。它的鎖不會在持有時再去取 `config`／`registry`。
+    pub git: GitWatch,
     /// 啟動時的後端選擇結果與安裝狀態。
     selection: BackendSelection,
     installed: InstalledTerminals,
@@ -147,6 +164,7 @@ impl AppState {
             config: Mutex::new(config),
             registry: Mutex::new(Registry::new()),
             backend: RwLock::new(make_backend(selection.app)),
+            git: GitWatch::new(),
             selection,
             installed,
             writer,
@@ -173,9 +191,17 @@ impl AppState {
     /// 目前狀態的快照。
     pub fn snapshot(&self) -> Snapshot {
         let backend = self.backend_info();
+        let branches = self.git.branches();
         let config = lock(&self.config);
         let registry = lock(&self.registry);
-        build_snapshot(&config, &registry, backend)
+        build_snapshot(&config, &registry, &branches, backend)
+    }
+
+    /// 依設定檔的工作區清單同步分支監聽。呼叫端持有 `config` 鎖，讓新增／移除依序套用。
+    pub fn sync_git(&self, config: &CueConfig) {
+        let list: Vec<(String, PathBuf)> =
+            config.workspaces.iter().map(|w| (w.id.clone(), w.path.clone())).collect();
+        self.git.sync(&list);
     }
 
     /// 排入一次寫檔（debounce 合併、原子寫入）。
@@ -266,7 +292,7 @@ mod tests {
             &mut config,
         );
 
-        let snap = build_snapshot(&config, &registry, backend_info());
+        let snap = build_snapshot(&config, &registry, &HashMap::new(), backend_info());
         assert_eq!(snap.workspaces.len(), 1);
         assert_eq!(snap.sessions.len(), 3);
         assert_eq!(snap.unclassified, vec!["iterm2:B".to_string()]);
@@ -285,11 +311,11 @@ mod tests {
     fn snapshot_carries_preferred_open_mode() {
         let mut config = CueConfig::default();
         config.set_last_open_mode(OpenMode::NewTab);
-        let snap = build_snapshot(&config, &Registry::new(), backend_info());
+        let snap = build_snapshot(&config, &Registry::new(), &HashMap::new(), backend_info());
         assert_eq!(serde_json::to_value(&snap).unwrap()["preferredOpenMode"], json!("newTab"));
 
         config.preferences.insert("defaultOpenMode".into(), json!("aiTopZshBottom"));
-        let snap = build_snapshot(&config, &Registry::new(), backend_info());
+        let snap = build_snapshot(&config, &Registry::new(), &HashMap::new(), backend_info());
         assert_eq!(snap.preferred_open_mode, Some(OpenMode::AiTopZshBottom));
     }
 
@@ -298,8 +324,11 @@ mod tests {
         let mut ws = Workspace::new("a".into(), PathBuf::from("/tmp"));
         ws.extra.insert("future".into(), json!(1));
         let config = CueConfig { workspaces: vec![ws], ..CueConfig::default() };
-        let snap = build_snapshot(&config, &Registry::new(), backend_info());
+        let snap = build_snapshot(&config, &Registry::new(), &HashMap::new(), backend_info());
         let v = serde_json::to_value(&snap.workspaces[0]).unwrap();
-        assert_eq!(v, json!({ "id": "a", "path": "/tmp", "name": "tmp", "collapsed": false }));
+        assert_eq!(v, json!({
+                "id": "a", "path": "/tmp", "name": "tmp", "collapsed": false,
+                "branch": null, "detached": false
+            }));
     }
 }

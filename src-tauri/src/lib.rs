@@ -13,9 +13,10 @@ pub mod shell;
 pub mod state;
 pub mod terminal;
 
-use tauri::{Manager, RunEvent};
+use tauri::{Emitter, Manager, RunEvent};
 
-use crate::state::AppState;
+use crate::git::GIT_BRANCH_CHANGED;
+use crate::state::{lock, AppState};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -39,6 +40,14 @@ pub fn run() {
             commands::remove_workspace,
         ])
         .setup(|app| {
+            let state = app.state::<AppState>();
+            state.sync_git(&lock(&state.config));
+            let handle = app.handle().clone();
+            state.git.start(move |change| {
+                if let Err(e) = handle.emit(GIT_BRANCH_CHANGED, &change) {
+                    eprintln!("[cue] 無法送出 {GIT_BRANCH_CHANGED}：{e}");
+                }
+            });
             discovery::spawn(app.handle().clone());
             Ok(())
         })

@@ -28,6 +28,7 @@ libc = "0.2"
 objc2 = { version = "0.6", default-features = false, features = ["std"] }
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSArray"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSWorkspace", "NSRunningApplication"] }
+notify = { version = "9.0.0", default-features = false, features = ["macos_fsevent"] }
 
 [dev-dependencies]
 # MIT OR Apache-2.0；歸屬測試建立暫存目錄
