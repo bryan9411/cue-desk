@@ -9,9 +9,10 @@ use tauri::{AppHandle, Manager, State};
 
 use crate::config::{self, CueConfig, Workspace};
 use crate::discovery;
+use crate::dispatch;
 use crate::error::CueError;
 use crate::layout;
-use crate::model::{SessionKey, SessionKind};
+use crate::model::{SessionKey, SessionKind, Status};
 use crate::registry::SessionNode;
 use crate::shell::SessionKindToCreate;
 use crate::state::{lock, workspace_roots, AppState, Snapshot};
@@ -372,6 +373,34 @@ pub async fn split_zsh(
         .map_err(|e| CueError::Io(format!("補開 zsh 的工作異常結束：{e}")))??;
     state.trigger_discovery();
     Ok(notice)
+}
+
+/// 拖檔派工：聚焦工作階段，把跳脫後的路徑填入輸入列，**絕不送出 Enter**。
+///
+/// 規則以 Rust 端 registry 的最新狀態判斷（前端的預判可能已過時）；
+/// 不符合時回傳 `DispatchRejected`，訊息即給使用者看的原因。路徑不安全時整批拒絕。
+#[tauri::command]
+pub async fn dispatch_files(app: AppHandle, session_id: String, paths: Vec<String>) -> Result<(), CueError> {
+    // 先驗證路徑：不安全時在聚焦（可能啟動終端機）之前就拒絕。
+    let text = dispatch::build_paths_text(&paths)?;
+    if text.is_empty() {
+        return Ok(());
+    }
+    let state = app.state::<AppState>();
+    let backend = state.backend();
+    let (key, window_id) = {
+        let registry = lock(&state.registry);
+        let node = registry.get(&session_id).ok_or(CueError::ObjectNotFound)?;
+        let status = if node.alive { node.status } else { Status::Exited };
+        dispatch::check_dispatch(backend.capabilities(), &node.kind, status)
+            .map_err(CueError::DispatchRejected)?;
+        (node.key.clone(), node.window_id)
+    };
+    tauri::async_runtime::spawn_blocking(move || dispatch::send(backend.as_ref(), &key, &text))
+        .await
+        .map_err(|e| CueError::Io(format!("拖檔派工的工作異常結束：{e}")))??;
+    lock(&state.registry).record_focus(window_id);
+    Ok(())
 }
 
 /// 補開 zsh 的目標資料夾：已歸屬的節點用工作區根目錄，未歸類節點用 cwd。

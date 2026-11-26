@@ -50,6 +50,9 @@ pub mod scripts {
     /// 回傳 `ok`；視窗不只 1 個分頁時回傳 `multi` 且不關閉；找不到時回傳空字串。
     /// Terminal.app 未執行時不啟動它。
     pub const TERMINAL_APP_CLOSE: &str = include_str!("scripts/terminal_app_close.applescript");
+    /// 把文字填入 iTerm2 指定窗格的輸入列，不送出 Enter；argv：unique ID、文字。
+    /// 找到回傳 `ok`，否則空字串。iTerm2 未執行時不啟動它。
+    pub const ITERM2_TYPE_NO_ENTER: &str = include_str!("scripts/iterm2_type_no_enter.applescript");
 }
 
 /// 後端支援的操作，前端依此停用不支援的功能。
@@ -274,5 +277,6 @@ mod tests {
         assert!(!scripts::ITERM2_RENAME.is_empty());
         assert!(!scripts::ITERM2_CLOSE.is_empty());
         assert!(!scripts::TERMINAL_APP_CLOSE.is_empty());
+        assert!(!scripts::ITERM2_TYPE_NO_ENTER.is_empty());
     }
 }

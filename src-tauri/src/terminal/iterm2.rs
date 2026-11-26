@@ -157,6 +157,27 @@ impl TerminalBackend for ITerm2Backend {
             Err(CueError::ObjectNotFound)
         }
     }
+
+    /// 以 `write text … newline no` 填入文字，絕不送出 Enter。不切換焦點；
+    /// iTerm2 未執行時回傳 `ObjectNotFound`。
+    fn type_text_no_enter(&self, key: &SessionKey, text: &str) -> Result<(), CueError> {
+        let SessionKey::Iterm2 { unique_id } = key else {
+            return Err(CueError::ObjectNotFound);
+        };
+        if !is_valid_unique_id(unique_id) {
+            return Err(CueError::ObjectNotFound);
+        }
+        // 換行等控制字元會讓終端機提前執行輸入列內容；呼叫端已檢查，這裡再擋一次。
+        if text.chars().any(char::is_control) {
+            return Err(CueError::UnsafePath);
+        }
+        let output = osascript::run(scripts::ITERM2_TYPE_NO_ENTER, &[unique_id.as_str(), text])?;
+        if output == SCRIPT_OK {
+            Ok(())
+        } else {
+            Err(CueError::ObjectNotFound)
+        }
+    }
 }
 
 /// 就地補開 zsh 的方向參數：「在右側」是垂直分隔線、「在下方」是水平分隔線。
@@ -343,6 +364,19 @@ mod tests {
         assert_eq!(backend.focus(&foreign), Err(CueError::ObjectNotFound));
         let invalid = SessionKey::Iterm2 { unique_id: "x\" & quit".into() };
         assert_eq!(backend.focus(&invalid), Err(CueError::ObjectNotFound));
+    }
+
+    #[test]
+    fn type_text_rejects_bad_input_without_running_script() {
+        let backend = ITerm2Backend::new();
+        let foreign = SessionKey::TerminalApp { window_id: 1, tty: "ttys001".into() };
+        assert_eq!(backend.type_text_no_enter(&foreign, "'/tmp/a'"), Err(CueError::ObjectNotFound));
+        let invalid = SessionKey::Iterm2 { unique_id: "x\" & quit".into() };
+        assert_eq!(backend.type_text_no_enter(&invalid, "'/tmp/a'"), Err(CueError::ObjectNotFound));
+        let valid = SessionKey::Iterm2 { unique_id: "9F2C1A3B-0D4E-4F5A-8B6C-7D8E9F0A1B2C".into() };
+        for text in ["'/tmp/a'\n", "'/tmp/a'\r", "\x1b[A"] {
+            assert_eq!(backend.type_text_no_enter(&valid, text), Err(CueError::UnsafePath), "{text:?}");
+        }
     }
 
     #[test]

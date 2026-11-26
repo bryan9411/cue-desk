@@ -8,6 +8,8 @@ use std::fmt;
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 
+use crate::dispatch::RejectReason;
+
 /// stderr 摘要的最大字元數，避免把過長的輸出帶進錯誤訊息。
 const SUMMARY_MAX_CHARS: usize = 200;
 
@@ -39,6 +41,8 @@ pub enum CueError {
     UnsafePath,
     /// 標籤不合法（過長或含控制字元），內容為原因。
     InvalidLabel(String),
+    /// 拖檔派工被拒絕，內容為原因。
+    DispatchRejected(RejectReason),
 }
 
 impl CueError {
@@ -58,6 +62,7 @@ impl CueError {
             CueError::InvalidWorkspace(_) => "invalid_workspace",
             CueError::UnsafePath => "unsafe_path",
             CueError::InvalidLabel(_) => "invalid_label",
+            CueError::DispatchRejected(_) => "dispatch_rejected",
         }
     }
 
@@ -110,6 +115,7 @@ impl fmt::Display for CueError {
             CueError::InvalidWorkspace(msg) => write!(f, "無法加入工作區：{msg}"),
             CueError::UnsafePath => write!(f, "路徑含有換行或控制字元，無法安全送入終端機"),
             CueError::InvalidLabel(msg) => write!(f, "標籤無效：{msg}"),
+            CueError::DispatchRejected(reason) => write!(f, "{reason}"),
         }
     }
 }
@@ -117,11 +123,19 @@ impl fmt::Display for CueError {
 impl std::error::Error for CueError {}
 
 /// 序列化為 `{ "kind": "...", "message": "..." }`，供前端顯示。
+/// 拖檔派工被拒絕時另帶 `reason`（[`RejectReason::code`]），讓前端不必比對文字。
 impl Serialize for CueError {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut s = serializer.serialize_struct("CueError", 2)?;
+        let reason = match self {
+            CueError::DispatchRejected(reason) => Some(reason.code()),
+            _ => None,
+        };
+        let mut s = serializer.serialize_struct("CueError", 2 + usize::from(reason.is_some()))?;
         s.serialize_field("kind", self.kind())?;
         s.serialize_field("message", &self.to_string())?;
+        if let Some(reason) = reason {
+            s.serialize_field("reason", reason)?;
+        }
         s.end()
     }
 }
@@ -188,5 +202,11 @@ mod tests {
         let json = serde_json::to_value(CueError::InvalidLabel("最多 64 個字元".into())).unwrap();
         assert_eq!(json["kind"], "invalid_label");
         assert_eq!(json["message"], "標籤無效：最多 64 個字元");
+        assert!(json.get("reason").is_none());
+
+        let json = serde_json::to_value(CueError::DispatchRejected(RejectReason::WaitingForApproval)).unwrap();
+        assert_eq!(json["kind"], "dispatch_rejected");
+        assert_eq!(json["reason"], "waiting_for_approval");
+        assert_eq!(json["message"], "AI 正在等你授權，路徑中的字元可能被當成選項按鍵");
     }
 }

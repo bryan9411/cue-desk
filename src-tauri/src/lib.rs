@@ -2,6 +2,7 @@ pub mod attribution;
 pub mod commands;
 pub mod config;
 pub mod discovery;
+pub mod dispatch;
 pub mod error;
 pub mod git;
 pub mod layout;
@@ -38,6 +39,7 @@ pub fn run() {
             commands::set_as_workspace,
             commands::ignore_session,
             commands::remove_workspace,
+            commands::dispatch_files,
         ])
         .setup(|app| {
             let state = app.state::<AppState>();
