@@ -1,13 +1,17 @@
 //! iTerm2 後端（AppleScript 引擎）。
 //!
-//! 探索與聚焦都以 `scripts/` 中的固定腳本執行，變動資料（unique ID）只經由 argv 傳入。
+//! 探索、聚焦與建立都以 `scripts/` 中的固定腳本執行，變動資料（unique ID、
+//! 視窗 ID、`shell` 模組產生的指令）只經由 argv 傳入。
+
+use std::time::Duration;
 
 use crate::error::CueError;
 use crate::model::{normalize_tty, Bounds, DiscoveredSession, SessionKey};
 use crate::osascript;
+use crate::shell;
 
 use super::detect::{self, TerminalApp};
-use super::{scripts, Capabilities, TerminalBackend};
+use super::{scripts, Capabilities, CreateSpec, CreatedSession, OpenMode, TerminalBackend};
 
 /// 探索腳本每筆紀錄的欄位數。
 const DISCOVER_FIELDS: usize = 10;
@@ -17,6 +21,9 @@ const UNIQUE_ID_MAX_LEN: usize = 64;
 
 /// 聚焦腳本找到窗格時的回傳值。
 const FOCUS_OK: &str = "ok";
+
+/// 建立工作階段的逾時：iTerm2 未執行時要先冷啟動，常超過預設的 5 秒。
+const CREATE_TIMEOUT: Duration = Duration::from_secs(20);
 
 /// iTerm2 後端。
 #[derive(Debug, Default, Clone, Copy)]
@@ -71,6 +78,45 @@ impl TerminalBackend for ITerm2Backend {
             Err(CueError::ObjectNotFound)
         }
     }
+
+    fn create(&self, spec: &CreateSpec) -> Result<CreatedSession, CueError> {
+        // 先產生所有指令：路徑不安全時在執行任何腳本（啟動 iTerm2）之前就拒絕。
+        let command = shell::launch_command(spec.kind, &spec.workspace_path)?;
+        let target = spec.target_window.map(|id| id.to_string()).unwrap_or_default();
+        let run = |script, args: &[&str]| osascript::run_with_timeout(script, args, CREATE_TIMEOUT);
+
+        let (output, with_zsh) = match spec.mode {
+            OpenMode::NewWindow => (run(scripts::ITERM2_CREATE_WINDOW, &[&command])?, false),
+            OpenMode::NewTab => (run(scripts::ITERM2_CREATE_TAB, &[&command, &target])?, false),
+            OpenMode::AiTopZshBottom | OpenMode::AiLeftZshRight => {
+                let zsh = shell::cd_command(&spec.workspace_path)?;
+                let direction = split_direction_arg(spec.mode);
+                let output =
+                    run(scripts::ITERM2_CREATE_SPLIT, &[&command, &target, &zsh, direction])?;
+                (output, true)
+            }
+        };
+        parse_created(&output, with_zsh)
+    }
+}
+
+/// 分割腳本的方向參數。iTerm2 以分隔線命名：`horizontal` 新窗格在下、`vertical` 新窗格在右。
+fn split_direction_arg(mode: OpenMode) -> &'static str {
+    match mode {
+        OpenMode::AiLeftZshRight => "vertical",
+        _ => "horizontal",
+    }
+}
+
+/// 解析建立腳本回傳的 unique ID：一般為一個，分割開啟方式為 AI ␟ zsh 兩個。
+fn parse_created(output: &str, with_zsh: bool) -> Result<CreatedSession, CueError> {
+    let ids: Vec<&str> = output.split(osascript::FIELD_SEP).collect();
+    let expected = if with_zsh { 2 } else { 1 };
+    if ids.len() != expected || !ids.iter().all(|id| is_valid_unique_id(id)) {
+        return Err(CueError::Script("無法辨識 iTerm2 新窗格的 ID".into()));
+    }
+    let key = |id: &str| SessionKey::Iterm2 { unique_id: id.to_owned() };
+    Ok(CreatedSession { key: key(ids[0]), zsh: ids.get(1).map(|id| key(id)) })
 }
 
 /// 解析探索腳本的輸出。欄位數不符、數值無法解析或 tty 無效的紀錄會略過。
@@ -118,6 +164,7 @@ fn is_valid_unique_id(id: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::shell::SessionKindToCreate;
 
     const FS: char = '\x1f';
     const RS: char = '\x1e';
@@ -237,6 +284,117 @@ mod tests {
         assert!(caps.split && caps.new_tab && caps.type_text_no_enter);
         assert!(caps.rename && caps.close_pane);
         assert!(!caps.precise_tabs);
+    }
+
+    #[test]
+    fn parses_created_ids() {
+        let ai = "6D3C1A2B-0000-4F6E-9C51-8D0E2B1A7F10";
+        let zsh = "0A1B2C3D-1111-4E5F-8A9B-0C1D2E3F4A5B";
+        let one = parse_created(ai, false).unwrap();
+        assert_eq!(one.key, SessionKey::Iterm2 { unique_id: ai.into() });
+        assert_eq!(one.zsh, None);
+
+        let two = parse_created(&row(&[ai, zsh]), true).unwrap();
+        assert_eq!(two.key, SessionKey::Iterm2 { unique_id: ai.into() });
+        assert_eq!(two.zsh, Some(SessionKey::Iterm2 { unique_id: zsh.into() }));
+    }
+
+    #[test]
+    fn rejects_unexpected_create_output() {
+        let ai = "6D3C1A2B-0000-4F6E-9C51-8D0E2B1A7F10";
+        for (out, with_zsh) in [
+            ("", false),
+            (ai, true),
+            (&*row(&[ai, ai]), false),
+            (&*row(&[ai, ""]), true),
+            ("x\" & quit", false),
+        ] {
+            assert!(
+                matches!(parse_created(out, with_zsh), Err(CueError::Script(_))),
+                "應拒絕 {out:?}（with_zsh = {with_zsh}）"
+            );
+        }
+    }
+
+    #[test]
+    fn split_modes_map_to_iterm2_direction_names() {
+        assert_eq!(split_direction_arg(OpenMode::AiTopZshBottom), "horizontal");
+        assert_eq!(split_direction_arg(OpenMode::AiLeftZshRight), "vertical");
+    }
+
+    #[test]
+    fn create_rejects_unsafe_path_without_running_script() {
+        let backend = ITerm2Backend::new();
+        for mode in [OpenMode::NewWindow, OpenMode::NewTab, OpenMode::AiTopZshBottom, OpenMode::AiLeftZshRight] {
+            let spec = CreateSpec {
+                workspace_path: "/tmp/a\nrm -rf ~".into(),
+                kind: SessionKindToCreate::Claude,
+                label: None,
+                mode,
+                target_window: None,
+            };
+            assert_eq!(backend.create(&spec), Err(CueError::UnsafePath));
+        }
+    }
+
+    /// 本機手動：`cargo test -- --ignored iterm2_create --nocapture`
+    /// 在含注入字元的暫存工作區以四種方式各建立一個 zsh 工作階段，檢查探索結果，
+    /// 且路徑中的 `$(touch /tmp/pwned)` 沒有被執行。分割窗格在下／在右需目視確認。
+    #[test]
+    #[ignore = "操作本機 iTerm2"]
+    fn iterm2_create_local() {
+        use std::path::Path;
+        use std::thread::sleep;
+
+        let pwned = Path::new("/tmp/pwned");
+        let _ = std::fs::remove_file(pwned);
+        assert!(!pwned.exists(), "測試前無法移除 /tmp/pwned");
+
+        // 保留暫存資料夾，新窗格 cd 進去後才能目視確認目錄。
+        let ws = tempfile::tempdir().unwrap().keep().join("A's 專案 $(touch /tmp/pwned) \"x\"");
+        std::fs::create_dir_all(&ws).unwrap();
+
+        let backend = ITerm2Backend::new();
+        let spec = |mode, target_window| CreateSpec {
+            workspace_path: ws.clone(),
+            kind: SessionKindToCreate::Zsh,
+            label: None,
+            mode,
+            target_window,
+        };
+        let find = |key: &SessionKey| {
+            sleep(Duration::from_millis(500));
+            backend
+                .discover()
+                .expect("探索失敗")
+                .into_iter()
+                .find(|s| &s.key == key)
+                .unwrap_or_else(|| panic!("探索不到新窗格 {key}"))
+        };
+
+        let created = backend.create(&spec(OpenMode::NewWindow, None)).expect("新視窗失敗");
+        assert_eq!(created.zsh, None);
+        let window = find(&created.key);
+        println!("新視窗：{} | 視窗 {}", window.key, window.window_id);
+
+        let created = backend.create(&spec(OpenMode::NewTab, Some(window.window_id))).expect("新分頁失敗");
+        let tab = find(&created.key);
+        assert_eq!(tab.window_id, window.window_id, "新分頁應開在指定視窗");
+        assert_ne!(tab.tab_index, window.tab_index);
+        println!("新分頁：{} | 分頁 {}", tab.key, tab.tab_index);
+
+        for (mode, place) in [(OpenMode::AiTopZshBottom, "下方"), (OpenMode::AiLeftZshRight, "右側")] {
+            let created = backend.create(&spec(mode, Some(window.window_id))).expect("分割建立失敗");
+            let ai = find(&created.key);
+            let zsh = find(&created.zsh.expect("分割應回傳 zsh 窗格"));
+            assert_eq!(ai.window_id, window.window_id);
+            assert_eq!((ai.window_id, ai.tab_index), (zsh.window_id, zsh.tab_index), "兩個窗格應在同一分頁");
+            println!("{mode:?}：分頁 {}，請目視確認 zsh 窗格在{place}", ai.tab_index);
+        }
+
+        sleep(Duration::from_secs(2));
+        assert!(!pwned.exists(), "注入的指令被執行了");
+        println!("工作區：{}", ws.display());
     }
 
     /// 本機手動：`cargo test -- --ignored iterm2 --nocapture`

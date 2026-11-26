@@ -8,7 +8,8 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::error::CueError;
-use crate::model::{Bounds, DiscoveredSession, ScreenIndex, SessionKey, SessionKind, WindowId};
+use crate::model::{Bounds, DiscoveredSession, ScreenIndex, SessionKey, WindowId};
+use crate::shell::SessionKindToCreate;
 
 pub mod detect;
 pub mod iterm2;
@@ -25,6 +26,15 @@ pub mod scripts {
         include_str!("scripts/terminal_app_discover.applescript");
     /// 聚焦 Terminal.app 的指定分頁；argv：window id、tty（`/dev/ttysNNN`）。找到回傳 `ok`，否則空字串。
     pub const TERMINAL_APP_FOCUS: &str = include_str!("scripts/terminal_app_focus.applescript");
+    /// iTerm2 開新視窗並送出指令；argv：指令。回傳新窗格的 unique ID。
+    pub const ITERM2_CREATE_WINDOW: &str =
+        include_str!("scripts/iterm2_create_window.applescript");
+    /// iTerm2 開新分頁並送出指令；argv：指令、目標視窗 ID（空字串為最前視窗）。
+    /// 回傳新窗格的 unique ID。
+    pub const ITERM2_CREATE_TAB: &str = include_str!("scripts/iterm2_create_tab.applescript");
+    /// iTerm2 開新分頁跑 AI 並分割出 zsh；argv：AI 指令、目標視窗 ID、zsh 指令、
+    /// 分割方向（`horizontal`／`vertical`）。回傳 AI 與 zsh 窗格的 unique ID（`\x1f` 分隔）。
+    pub const ITERM2_CREATE_SPLIT: &str = include_str!("scripts/iterm2_create_split.applescript");
 }
 
 /// 後端支援的操作，前端依此停用不支援的功能。
@@ -67,14 +77,25 @@ pub enum SplitDirection {
 
 /// 建立工作階段的規格。
 ///
-/// 實際送進終端機的指令只能來自程式內固定列舉，`kind` 為 `Other` 時由指令產生端拒絕。
+/// `kind` 只有固定的三種，送進終端機的指令由後端以 `shell` 模組產生，不接受任意字串。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateSpec {
     pub workspace_path: PathBuf,
-    pub kind: SessionKind,
+    pub kind: SessionKindToCreate,
+    /// 使用者自訂標籤；由呼叫端綁定到建立出的工作階段，後端不送進終端機。
     pub label: Option<String>,
     pub mode: OpenMode,
+    /// 「新分頁」與分割開啟方式的目標視窗；`None` 表示最前視窗。
     pub target_window: Option<WindowId>,
+}
+
+/// 建立工作階段的結果。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreatedSession {
+    /// 執行 `kind` 指令的窗格。
+    pub key: SessionKey,
+    /// 分割開啟方式額外建立的 zsh 窗格。
+    pub zsh: Option<SessionKey>,
 }
 
 /// 終端機後端。
@@ -98,8 +119,8 @@ pub trait TerminalBackend: Send + Sync {
     /// 聚焦指定工作階段（使用者主動操作，可啟動終端機）。
     fn focus(&self, key: &SessionKey) -> Result<(), CueError>;
 
-    /// 建立工作階段。
-    fn create(&self, _spec: &CreateSpec) -> Result<(), CueError> {
+    /// 建立工作階段（使用者主動操作，可啟動終端機）。
+    fn create(&self, _spec: &CreateSpec) -> Result<CreatedSession, CueError> {
         Err(CueError::Unsupported)
     }
 
@@ -176,7 +197,7 @@ mod tests {
         let key = SessionKey::Iterm2 { unique_id: "ABC".into() };
         let spec = CreateSpec {
             workspace_path: PathBuf::from("/tmp"),
-            kind: SessionKind::Claude,
+            kind: SessionKindToCreate::Claude,
             label: None,
             mode: OpenMode::NewWindow,
             target_window: None,
@@ -228,5 +249,8 @@ mod tests {
         assert!(!scripts::ITERM2_FOCUS.is_empty());
         assert!(!scripts::TERMINAL_APP_DISCOVER.is_empty());
         assert!(!scripts::TERMINAL_APP_FOCUS.is_empty());
+        assert!(!scripts::ITERM2_CREATE_WINDOW.is_empty());
+        assert!(!scripts::ITERM2_CREATE_TAB.is_empty());
+        assert!(!scripts::ITERM2_CREATE_SPLIT.is_empty());
     }
 }
