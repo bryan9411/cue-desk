@@ -37,9 +37,9 @@ pub struct CueConfig {
     /// 未歸類區的忽略清單（`SessionKey` 字串）。
     pub ignored: Vec<String>,
     pub terminal_backend: TerminalBackendPref,
-    /// 偏好設定；之後再定型別，先原樣保留。
+    /// 偏好設定，以原始 JSON 物件保存。
     pub preferences: Map<String, Value>,
-    /// 視窗位置與大小；之後再定型別，先原樣保留。
+    /// 視窗位置與大小，以原始 JSON 物件保存。
     pub window: Map<String, Value>,
     /// 目前版本不認得的頂層欄位，原樣保留。
     #[serde(flatten)]

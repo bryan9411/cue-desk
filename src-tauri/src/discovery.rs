@@ -17,7 +17,7 @@ use crate::process::{self, Foreground};
 use crate::registry::SessionNode;
 use crate::state::{lock, workspace_roots, AppState};
 
-/// 輪詢間隔（001 第 3.2 節）。
+/// 輪詢間隔。
 pub const POLL_INTERVAL: Duration = Duration::from_secs(2);
 /// 單輪超過此耗時時記錄警告，作為調整輪詢間隔的依據。
 const SLOW_ROUND: Duration = Duration::from_secs(1);

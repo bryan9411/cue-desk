@@ -1,5 +1,4 @@
-// 與 Rust 端序列化格式一一對應的領域型別（Rust 為唯一真相）。
-// 對照：src-tauri/src/model.rs、registry.rs、state.rs、terminal/mod.rs、error.rs。
+// 前端領域型別，欄位必須與 Rust 端經 IPC 送來的格式一致；兩邊不同時以 Rust 為準。
 
 /** 工作階段狀態。`running`／`waiting`／`done` 只由 Hook 驅動。 */
 export type Status = "idle" | "running" | "waiting" | "done" | "exited";

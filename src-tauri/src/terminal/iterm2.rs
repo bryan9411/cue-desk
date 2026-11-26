@@ -9,7 +9,7 @@ use crate::osascript;
 use super::detect::{self, TerminalApp};
 use super::{scripts, Capabilities, TerminalBackend};
 
-/// 探索腳本每筆紀錄的欄位數（001 第 3.1 節）。
+/// 探索腳本每筆紀錄的欄位數。
 const DISCOVER_FIELDS: usize = 10;
 
 /// unique ID 的最大長度；iTerm2 目前是 36 字元的 UUID，保留餘裕。

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { BackendInfo, CueError, SessionNode, Snapshot, Workspace } from "../types";
 
-// 所有 session 狀態更新只經由 applySnapshot()（之後加入 applyStatusUpdate()）。
+// 所有 session 狀態更新只經由 applySnapshot()，不要在別處直接改 sessions。
 export interface CueState {
   /** 依設定檔順序的工作區。 */
   workspaces: Workspace[];

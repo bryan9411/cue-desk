@@ -1,4 +1,4 @@
-// 工作階段狀態燈號。目前只有 dot 造型：
+// 工作階段狀態燈號（圓點）：
 // running／waiting／done 實心、idle 空心、exited 虛線空心，色弱者也能以形狀區分。
 import type { Status } from "../types";
 

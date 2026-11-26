@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import type { CueError, Snapshot } from "../types";
 import { getSnapshot, toCueError } from "./api";
 
-/** 快照有變動時 Rust 送出的事件（對應 `discovery::SESSIONS_UPDATED`）。 */
+/** 快照有變動時 Rust 送出的事件名稱，內容為完整快照。 */
 export const SESSIONS_UPDATED = "sessions-updated";
 
 /** 訂閱 `sessions-updated`；回傳的函式可在任何時候呼叫以取消（含訂閱尚未完成時）。 */

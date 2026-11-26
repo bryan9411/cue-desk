@@ -1,7 +1,7 @@
 //! Terminal.app 後端（AppleScript 引擎）。
 //!
 //! 探索與聚焦都以 `scripts/` 中的固定腳本執行，變動資料（視窗 ID、tty）只經由 argv 傳入。
-//! 以 Cmd+T 開的原生分頁在 AppleScript 中是獨立的視窗（001 第 3.3 節），
+//! 以 Cmd+T 開的原生分頁在 AppleScript 中是獨立的視窗，
 //! 因此每個分頁的身分為「視窗 ID + 正規化後 tty」。
 
 use crate::error::CueError;
@@ -11,7 +11,7 @@ use crate::osascript;
 use super::detect::{self, TerminalApp};
 use super::{scripts, Capabilities, TerminalBackend};
 
-/// 探索腳本每筆紀錄的欄位數（001 第 3.1 節）。
+/// 探索腳本每筆紀錄的欄位數。
 const DISCOVER_FIELDS: usize = 9;
 
 /// 聚焦腳本找到分頁時的回傳值。
