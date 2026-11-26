@@ -3,6 +3,7 @@
 //! 探索、聚焦與建立都以 `scripts/` 中的固定腳本執行，變動資料（unique ID、
 //! 視窗 ID、`shell` 模組產生的指令）只經由 argv 傳入。
 
+use std::path::Path;
 use std::time::Duration;
 
 use crate::error::CueError;
@@ -11,7 +12,9 @@ use crate::osascript;
 use crate::shell;
 
 use super::detect::{self, TerminalApp};
-use super::{scripts, Capabilities, CreateSpec, CreatedSession, OpenMode, TerminalBackend};
+use super::{
+    scripts, Capabilities, CreateSpec, CreatedSession, OpenMode, SplitDirection, TerminalBackend,
+};
 
 /// 探索腳本每筆紀錄的欄位數。
 const DISCOVER_FIELDS: usize = 10;
@@ -97,6 +100,33 @@ impl TerminalBackend for ITerm2Backend {
             }
         };
         parse_created(&output, with_zsh)
+    }
+
+    fn split_zsh(&self, key: &SessionKey, direction: SplitDirection, cwd: &Path) -> Result<(), CueError> {
+        let SessionKey::Iterm2 { unique_id } = key else {
+            return Err(CueError::ObjectNotFound);
+        };
+        if !is_valid_unique_id(unique_id) {
+            return Err(CueError::ObjectNotFound);
+        }
+        let command = shell::cd_command(cwd)?;
+        let output = osascript::run(
+            scripts::ITERM2_SPLIT_ZSH,
+            &[unique_id.as_str(), split_zsh_direction_arg(direction), &command],
+        )?;
+        if is_valid_unique_id(&output) {
+            Ok(())
+        } else {
+            Err(CueError::ObjectNotFound)
+        }
+    }
+}
+
+/// 就地補開 zsh 的方向參數：「在右側」是垂直分隔線、「在下方」是水平分隔線。
+fn split_zsh_direction_arg(direction: SplitDirection) -> &'static str {
+    match direction {
+        SplitDirection::Right => "vertical",
+        SplitDirection::Below => "horizontal",
     }
 }
 
@@ -276,6 +306,27 @@ mod tests {
         assert_eq!(backend.focus(&foreign), Err(CueError::ObjectNotFound));
         let invalid = SessionKey::Iterm2 { unique_id: "x\" & quit".into() };
         assert_eq!(backend.focus(&invalid), Err(CueError::ObjectNotFound));
+    }
+
+    #[test]
+    fn split_zsh_rejects_bad_input_without_running_script() {
+        let backend = ITerm2Backend::new();
+        let cwd = Path::new("/tmp");
+        let foreign = SessionKey::TerminalApp { window_id: 1, tty: "ttys001".into() };
+        assert_eq!(backend.split_zsh(&foreign, SplitDirection::Right, cwd), Err(CueError::ObjectNotFound));
+        let invalid = SessionKey::Iterm2 { unique_id: "x\" & quit".into() };
+        assert_eq!(backend.split_zsh(&invalid, SplitDirection::Below, cwd), Err(CueError::ObjectNotFound));
+        let valid = SessionKey::Iterm2 { unique_id: "281FB514-2378-4265-804C-C17B1E9060AE".into() };
+        assert_eq!(
+            backend.split_zsh(&valid, SplitDirection::Right, Path::new("/tmp/a\nrm -rf ~")),
+            Err(CueError::UnsafePath)
+        );
+    }
+
+    #[test]
+    fn split_zsh_direction_follows_divider_naming() {
+        assert_eq!(split_zsh_direction_arg(SplitDirection::Right), "vertical");
+        assert_eq!(split_zsh_direction_arg(SplitDirection::Below), "horizontal");
     }
 
     #[test]

@@ -28,6 +28,7 @@ pub fn run() {
             commands::add_workspace,
             commands::set_workspace_collapsed,
             commands::create_session,
+            commands::split_zsh,
         ])
         .setup(|app| {
             discovery::spawn(app.handle().clone());

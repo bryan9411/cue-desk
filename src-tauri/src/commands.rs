@@ -12,7 +12,7 @@ use crate::error::CueError;
 use crate::layout;
 use crate::shell::SessionKindToCreate;
 use crate::state::{lock, AppState, Snapshot};
-use crate::terminal::{Capabilities, CreateSpec, CreatedSession, OpenMode};
+use crate::terminal::{Capabilities, CreateSpec, CreatedSession, OpenMode, SplitDirection};
 
 /// 目前的完整狀態。
 #[tauri::command]
@@ -98,6 +98,62 @@ fn check_mode(caps: Capabilities, mode: OpenMode) -> Result<(), CueError> {
         Ok(())
     } else {
         Err(CueError::Unsupported)
+    }
+}
+
+/// 不支援分割的後端改開新視窗時，回給前端的提示。
+const SPLIT_FALLBACK_NOTICE: &str = "後備模式改以新視窗並排";
+
+/// 在工作階段旁補開同工作區的 zsh。原工作階段不送任何輸入。
+///
+/// 工作區路徑取節點所屬工作區的根目錄；未歸類節點用它的 cwd。
+/// 成功時回傳提示文字：後端不支援分割、改開新視窗時為 `Some`。
+#[tauri::command]
+pub async fn split_zsh(
+    app: AppHandle,
+    session_id: String,
+    direction: SplitDirection,
+) -> Result<Option<String>, CueError> {
+    let state = app.state::<AppState>();
+    let (key, cwd) = {
+        // 與探索迴圈相同的上鎖順序（先 config 再 registry），避免互相等待。
+        let config = lock(&state.config);
+        let registry = lock(&state.registry);
+        let node = registry.get(&session_id).ok_or(CueError::ObjectNotFound)?;
+        if !node.alive {
+            return Err(CueError::SessionExited);
+        }
+        let cwd = split_target_dir(&config, node.workspace_id.as_deref(), node.cwd.as_deref())?;
+        (node.key.clone(), cwd)
+    };
+    if !cwd.is_dir() {
+        return Err(CueError::InvalidWorkspace("工作區資料夾不存在".into()));
+    }
+    let backend = state.backend();
+    let notice = (!backend.capabilities().split).then(|| SPLIT_FALLBACK_NOTICE.to_owned());
+    tauri::async_runtime::spawn_blocking(move || backend.split_zsh(&key, direction, &cwd))
+        .await
+        .map_err(|e| CueError::Io(format!("補開 zsh 的工作異常結束：{e}")))??;
+    state.trigger_discovery();
+    Ok(notice)
+}
+
+/// 補開 zsh 的目標資料夾：已歸屬的節點用工作區根目錄，未歸類節點用 cwd。
+fn split_target_dir(
+    config: &CueConfig,
+    workspace_id: Option<&str>,
+    cwd: Option<&Path>,
+) -> Result<PathBuf, CueError> {
+    match workspace_id {
+        Some(id) => config
+            .workspaces
+            .iter()
+            .find(|w| w.id == id)
+            .map(|w| w.path.clone())
+            .ok_or(CueError::WorkspaceNotFound),
+        None => cwd
+            .map(Path::to_path_buf)
+            .ok_or_else(|| CueError::InvalidWorkspace("無法取得這個工作階段的工作目錄".into())),
     }
 }
 
@@ -191,6 +247,18 @@ mod tests {
         for mode in [OpenMode::NewWindow, OpenMode::NewTab, OpenMode::AiTopZshBottom, OpenMode::AiLeftZshRight] {
             assert_eq!(check_mode(full, mode), Ok(()), "{mode:?}");
         }
+    }
+
+    #[test]
+    fn split_uses_workspace_root_or_unclassified_cwd() {
+        let mut config = CueConfig::default();
+        config.workspaces.push(Workspace::new("ws1".into(), PathBuf::from("/repo")));
+        let cwd = Path::new("/repo/src/deep");
+
+        assert_eq!(split_target_dir(&config, Some("ws1"), Some(cwd)), Ok(PathBuf::from("/repo")));
+        assert_eq!(split_target_dir(&config, None, Some(cwd)), Ok(cwd.to_path_buf()));
+        assert_eq!(split_target_dir(&config, Some("gone"), Some(cwd)), Err(CueError::WorkspaceNotFound));
+        assert!(matches!(split_target_dir(&config, None, None), Err(CueError::InvalidWorkspace(_))));
     }
 
     #[test]

@@ -37,6 +37,9 @@ pub mod scripts {
     /// iTerm2 開新分頁跑 AI 並分割出 zsh；argv：AI 指令、目標視窗 ID、zsh 指令、
     /// 分割方向（`horizontal`／`vertical`）。回傳 AI 與 zsh 窗格的 unique ID（`\x1f` 分隔）。
     pub const ITERM2_CREATE_SPLIT: &str = include_str!("scripts/iterm2_create_split.applescript");
+    /// iTerm2 在指定窗格旁分割出 zsh；argv：unique ID、分割方向（`vertical`／`horizontal`）、
+    /// 指令。回傳新窗格的 unique ID；找不到目標窗格時回傳空字串。
+    pub const ITERM2_SPLIT_ZSH: &str = include_str!("scripts/iterm2_split_zsh.applescript");
 }
 
 /// 後端支援的操作，前端依此停用不支援的功能。
@@ -126,7 +129,8 @@ pub trait TerminalBackend: Send + Sync {
         Err(CueError::Unsupported)
     }
 
-    /// 在指定工作階段旁分割出 zsh 窗格並切換到 `cwd`。
+    /// 在指定工作階段旁開出 zsh 並切換到 `cwd`，原工作階段不送任何輸入。
+    /// 不支援分割的後端（`capabilities().split == false`）改開新視窗。
     fn split_zsh(
         &self,
         _key: &SessionKey,
@@ -255,5 +259,6 @@ mod tests {
         assert!(!scripts::ITERM2_CREATE_TAB.is_empty());
         assert!(!scripts::ITERM2_CREATE_SPLIT.is_empty());
         assert!(!scripts::TERMINAL_APP_CREATE.is_empty());
+        assert!(!scripts::ITERM2_SPLIT_ZSH.is_empty());
     }
 }

@@ -3,8 +3,10 @@
 //! 探索與聚焦都以 `scripts/` 中的固定腳本執行，變動資料（視窗 ID、tty）只經由 argv 傳入。
 //! 以 Cmd+T 開的原生分頁在 AppleScript 中是獨立的視窗，
 //! 因此每個分頁的身分為「視窗 ID + 正規化後 tty」。
-//! 建立工作階段只支援開新視窗：AppleScript 無法在既有視窗開分頁或分割。
+//! 建立工作階段只支援開新視窗：AppleScript 無法在既有視窗開分頁或分割，
+//! 就地補開 zsh 也因此改開同工作區的新視窗。
 
+use std::path::Path;
 use std::time::Duration;
 
 use crate::error::CueError;
@@ -13,7 +15,9 @@ use crate::osascript;
 use crate::shell;
 
 use super::detect::{self, TerminalApp};
-use super::{scripts, Capabilities, CreateSpec, CreatedSession, OpenMode, TerminalBackend};
+use super::{
+    scripts, Capabilities, CreateSpec, CreatedSession, OpenMode, SplitDirection, TerminalBackend,
+};
 
 /// 探索腳本每筆紀錄的欄位數。
 const DISCOVER_FIELDS: usize = 9;
@@ -89,6 +93,16 @@ impl TerminalBackend for TerminalAppBackend {
         let command = shell::launch_command(spec.kind, &spec.workspace_path)?;
         let output = osascript::run_with_timeout(scripts::TERMINAL_APP_CREATE, &[&command], CREATE_TIMEOUT)?;
         parse_created(&output)
+    }
+
+    /// 無法分割，改開新視窗並 `cd` 到工作區；方向不影響結果。
+    fn split_zsh(&self, key: &SessionKey, _direction: SplitDirection, cwd: &Path) -> Result<(), CueError> {
+        if !matches!(key, SessionKey::TerminalApp { .. }) {
+            return Err(CueError::ObjectNotFound);
+        }
+        let command = shell::cd_command(cwd)?;
+        let output = osascript::run_with_timeout(scripts::TERMINAL_APP_CREATE, &[&command], CREATE_TIMEOUT)?;
+        parse_created(&output).map(|_| ())
     }
 }
 
@@ -297,6 +311,21 @@ mod tests {
             assert_eq!(backend.create(&spec(mode, "/tmp")), Err(CueError::Unsupported), "{mode:?}");
         }
         assert_eq!(backend.create(&spec(OpenMode::NewWindow, "/tmp/a\nrm -rf ~")), Err(CueError::UnsafePath));
+    }
+
+    #[test]
+    fn split_zsh_rejects_bad_input_without_running_script() {
+        let backend = TerminalAppBackend::new();
+        let foreign = SessionKey::Iterm2 { unique_id: "ABC".into() };
+        assert_eq!(
+            backend.split_zsh(&foreign, SplitDirection::Right, Path::new("/tmp")),
+            Err(CueError::ObjectNotFound)
+        );
+        let key = SessionKey::TerminalApp { window_id: 1, tty: "ttys001".into() };
+        assert_eq!(
+            backend.split_zsh(&key, SplitDirection::Below, Path::new("/tmp/a\nrm -rf ~")),
+            Err(CueError::UnsafePath)
+        );
     }
 
     /// 本機手動：`cargo test -- --ignored terminal_app_create --nocapture`

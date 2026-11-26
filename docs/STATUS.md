@@ -68,7 +68,7 @@
   - [x] 3-1-03 feat: iTerm2 建立工作階段（四種開啟方式）
   - [x] 3-1-04 feat: Terminal.app 建立工作階段與 create 指令
 - [ ] **slice-3-2 工作階段管理** → `docs/slices/slice-3-2.md`
-  - [ ] 3-2-01 feat: 就地補開同工作區 Zsh
+  - [x] 3-2-01 feat: 就地補開同工作區 Zsh
   - [ ] 3-2-02 feat: 重新命名與關閉工作階段
   - [ ] 3-2-03 feat: 重新開啟、移除與未歸類操作
 - [ ] **slice-3-3 選單與建立 Modal** → `docs/slices/slice-3-3.md`
