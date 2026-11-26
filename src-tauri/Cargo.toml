@@ -1,6 +1,6 @@
 [package]
 name = "cue"
-version = "0.1.6"
+version = "0.1.7"
 description = "macOS 原生的多工作區 AI CLI 指揮中心"
 authors = ["bryan"]
 license = "MIT"
