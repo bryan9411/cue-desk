@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { predictDispatch, sessionTarget } from "../../hooks/useDragDrop";
 import {
   closeSession,
   focusSession,
@@ -13,6 +14,7 @@ import { selectCapabilities, useCue } from "../../store/useCue";
 import type { SessionKind, SessionNode as Node } from "../../types";
 import { ContextMenu, useContextMenu, type MenuEntry } from "../ContextMenu";
 import { StatusLight } from "../StatusLight";
+import { DropHint } from "./DropHint";
 import { RenameField } from "./RenameField";
 
 function kindLabel(kind: SessionKind): string {
@@ -31,7 +33,10 @@ interface Props {
 
 type Message = { tone: "error" | "info"; text: string };
 
-/** 工作階段節點：點擊聚焦終端機，右鍵開啟操作選單；結果訊息顯示在節點下方。 */
+/**
+ * 工作階段節點：點擊聚焦終端機，右鍵開啟操作選單；結果訊息顯示在節點下方。
+ * 也是拖檔派工的落點：懸停時預判並顯示能否填入路徑，放下後的結果同樣顯示在下方。
+ */
 export function SessionNode({ node, detail, withMenu = true, children }: Props) {
   const caps = useCue(selectCapabilities);
   const [message, setMessage] = useState<Message | null>(null);
@@ -43,6 +48,9 @@ export function SessionNode({ node, detail, withMenu = true, children }: Props) 
   const rowRef = useRef<HTMLButtonElement>(null);
   // 以 Enter／Esc 結束重新命名時把焦點還給節點；點別處結束時不搶焦點。
   const refocusRow = useRef(false);
+  const dropTarget = sessionTarget(node.id);
+  const dragOver = useCue((s) => s.dropTarget === dropTarget);
+  const dropFeedback = useCue((s) => (s.dropFeedback?.target === dropTarget ? s.dropFeedback : null));
 
   useEffect(() => setOptimisticLabel(undefined), [node.label]);
   useEffect(() => {
@@ -50,6 +58,13 @@ export function SessionNode({ node, detail, withMenu = true, children }: Props) 
     refocusRow.current = false;
     rowRef.current?.focus();
   }, [renaming]);
+
+  // 放下的結果轉成節點自己的訊息，之後與其他操作的訊息一樣在下一次操作時清除。
+  useEffect(() => {
+    if (!dropFeedback) return;
+    setMessage({ tone: dropFeedback.tone, text: dropFeedback.text });
+    useCue.getState().setDropFeedback(null);
+  }, [dropFeedback]);
 
   const endRename = (byKey: boolean) => {
     refocusRow.current = byKey;
@@ -60,6 +75,12 @@ export function SessionNode({ node, detail, withMenu = true, children }: Props) 
   const kind = kindLabel(node.kind);
   const label = optimisticLabel !== undefined ? optimisticLabel : node.label;
   const name = label ?? node.defaultName;
+  const dropRejection = dragOver ? predictDispatch(caps, node) : null;
+  const dropRing = !dragOver
+    ? ""
+    : `bg-surface outline-1 -outline-offset-1 outline-dashed ${
+        dropRejection ? "outline-status-waiting" : "outline-accent"
+      }`;
 
   /** 執行一個操作；回傳字串時當作提示顯示。 */
   const run = (task: () => Promise<string | null>) => {
@@ -139,7 +160,7 @@ export function SessionNode({ node, detail, withMenu = true, children }: Props) 
   );
 
   return (
-    <li className={exited && !renaming ? "opacity-55" : undefined}>
+    <li data-drop-target={dropTarget} className={exited && !renaming ? "opacity-55" : undefined}>
       {renaming ? (
         <div className={`${rowClass} bg-surface`}>
           <StatusLight status={node.status} />
@@ -162,7 +183,7 @@ export function SessionNode({ node, detail, withMenu = true, children }: Props) 
           onClick={focus}
           {...(withMenu ? menu.triggerProps : {})}
           aria-busy={pending || undefined}
-          className={`${rowClass} hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus-ring active:bg-selected`}
+          className={`${rowClass} hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus-ring active:bg-selected ${dropRing}`}
         >
           <StatusLight status={node.status} />
           <span className="flex min-w-0 items-baseline gap-2">
@@ -173,15 +194,23 @@ export function SessionNode({ node, detail, withMenu = true, children }: Props) 
         </button>
       )}
       {children}
-      {message && (
-        <p
-          role={message.tone === "error" ? "alert" : "status"}
-          className={`ml-[30px] mr-2 mb-1 text-[12px] leading-4 ${
-            message.tone === "error" ? "text-status-waiting" : "text-muted"
-          }`}
-        >
-          {message.text}
-        </p>
+      {dragOver ? (
+        <DropHint
+          tone={dropRejection ? "reject" : "accept"}
+          text={dropRejection ?? "放開後填入路徑，不會送出 Enter"}
+          className="ml-[30px] mr-2 mb-1"
+        />
+      ) : (
+        message && (
+          <p
+            role={message.tone === "error" ? "alert" : "status"}
+            className={`ml-[30px] mr-2 mb-1 text-[12px] leading-4 ${
+              message.tone === "error" ? "text-status-waiting" : "text-muted"
+            }`}
+          >
+            {message.text}
+          </p>
+        )
       )}
       {withMenu && menu.anchor && (
         <ContextMenu anchor={menu.anchor} title={name} entries={entries} onClose={menu.close} />

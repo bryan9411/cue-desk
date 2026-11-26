@@ -1,18 +1,24 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { useState } from "react";
+import { useDragDrop, WORKSPACE_LIST_TARGET } from "../../hooks/useDragDrop";
 import { addWorkspace, toCueError } from "../../ipc/api";
 import { selectWorkspaceGroups, useCue } from "../../store/useCue";
 import { CueMark, Folder, Plus } from "../icons/Icons";
+import { DropHint } from "./DropHint";
 import { UnclassifiedSection } from "./UnclassifiedSection";
 import { WorkspaceNode } from "./WorkspaceNode";
 
-/** 側邊欄：頂部標誌與加入工作區、工作區樹、最底部的「未歸類」區。 */
+/** 側邊欄：頂部標誌與加入工作區、工作區樹、最底部的「未歸類」區；也是拖入資料夾與檔案的落點。 */
 export function Sidebar() {
   const groups = useCue(selectWorkspaceGroups);
   const loaded = useCue((s) => s.backend !== null);
   const lastError = useCue((s) => s.lastError);
   const setLastError = useCue((s) => s.setLastError);
   const [picking, setPicking] = useState(false);
+  const overList = useCue((s) => s.dropTarget === WORKSPACE_LIST_TARGET);
+  const listFeedback = useCue((s) => (s.dropFeedback?.target === WORKSPACE_LIST_TARGET ? s.dropFeedback : null));
+  const setDropFeedback = useCue((s) => s.setDropFeedback);
+  useDragDrop();
 
   const pickWorkspace = async () => {
     if (picking) return;
@@ -28,7 +34,7 @@ export function Sidebar() {
   };
 
   return (
-    <div className="flex h-full flex-col bg-sidebar text-primary">
+    <div className="relative flex h-full flex-col bg-sidebar text-primary">
       <header
         data-tauri-drag-region
         className="flex items-center gap-2 px-3 pb-2 pt-3 [border-bottom:var(--header-rule)]"
@@ -62,11 +68,30 @@ export function Sidebar() {
         </div>
       )}
 
-      <nav aria-label="工作區" className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+      {listFeedback && (
+        <div role="alert" className="flex items-start gap-2 border-b border-border-subtle px-3 py-2 text-[12px] leading-4">
+          <p className="flex-1 whitespace-pre-line text-status-waiting">{listFeedback.text}</p>
+          <button
+            type="button"
+            onClick={() => setDropFeedback(null)}
+            className="shrink-0 rounded-sm text-muted underline underline-offset-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-focus-ring"
+          >
+            關閉
+          </button>
+        </div>
+      )}
+
+      <nav
+        aria-label="工作區"
+        data-drop-target={WORKSPACE_LIST_TARGET}
+        className={`min-h-0 flex-1 overflow-y-auto px-2 pb-4 ${
+          overList ? "rounded-lg outline-1 -outline-offset-4 outline-dashed outline-accent" : ""
+        }`}
+      >
         {loaded && groups.length === 0 ? (
           <div className="flex flex-col items-start gap-3 px-2 pt-6 text-[13px] leading-5 text-muted">
             <Folder size={22} />
-            <p>加入專案資料夾後，在其中開啟的終端機會自動歸到它底下。</p>
+            <p>加入專案資料夾後，在其中開啟的終端機會自動歸到它底下。也可以從 Finder 把資料夾拖到這裡。</p>
             <button
               type="button"
               onClick={pickWorkspace}
@@ -86,6 +111,14 @@ export function Sidebar() {
         )}
         <UnclassifiedSection />
       </nav>
+
+      {overList && (
+        <DropHint
+          tone="accept"
+          text="放開以加入資料夾為工作區"
+          className="pointer-events-none absolute inset-x-3 bottom-3 rounded-sm border border-border-subtle bg-surface px-2 py-1.5"
+        />
+      )}
     </div>
   );
 }

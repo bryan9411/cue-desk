@@ -29,6 +29,7 @@ pub fn run() {
             commands::get_snapshot,
             commands::focus_session,
             commands::add_workspace,
+            commands::classify_paths,
             commands::set_workspace_collapsed,
             commands::create_session,
             commands::split_zsh,

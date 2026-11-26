@@ -104,3 +104,22 @@ export function ignoreSession(sessionId: string): Promise<void> {
 export function removeWorkspace(id: string): Promise<void> {
   return call<void>("remove_workspace", { id });
 }
+
+/** 拖入路徑的分類結果。 */
+export interface ClassifiedPaths {
+  folders: string[];
+  others: string[];
+}
+
+/** 由 Rust 判斷拖入的路徑哪些是資料夾。 */
+export function classifyPaths(paths: string[]): Promise<ClassifiedPaths> {
+  return call<ClassifiedPaths>("classify_paths", { paths });
+}
+
+/**
+ * 把路徑跳脫後填入工作階段的輸入列，不送出 Enter。
+ * 不符合派工條件時以 `dispatch_rejected` reject，`message` 為給使用者看的原因。
+ */
+export function dispatchFiles(sessionId: string, paths: string[]): Promise<void> {
+  return call<void>("dispatch_files", { sessionId, paths });
+}

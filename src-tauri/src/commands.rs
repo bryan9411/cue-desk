@@ -5,6 +5,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
 
 use crate::config::{self, CueConfig, Workspace};
@@ -436,6 +437,32 @@ pub fn add_workspace(app: AppHandle, path: String) -> Result<String, CueError> {
     add_workspace_path(&app, Path::new(&path))
 }
 
+/// 拖入側邊欄的路徑分類結果；兩組都維持原本的順序。
+#[derive(Debug, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClassifiedPaths {
+    /// 確實存在的資料夾（含指向資料夾的連結）。
+    pub folders: Vec<String>,
+    /// 檔案、不存在或不是絕對路徑的項目。
+    pub others: Vec<String>,
+}
+
+/// 把拖入的路徑分成資料夾與其他；前端無法自行判斷 Finder 拖來的是不是資料夾。
+#[tauri::command]
+pub fn classify_paths(paths: Vec<String>) -> ClassifiedPaths {
+    let mut result = ClassifiedPaths::default();
+    for path in paths {
+        let p = Path::new(&path);
+        let is_dir = p.is_absolute() && std::fs::metadata(p).map(|m| m.is_dir()).unwrap_or(false);
+        if is_dir {
+            result.folders.push(path);
+        } else {
+            result.others.push(path);
+        }
+    }
+    result
+}
+
 /// 加入工作區並立即重算既有節點的歸屬，不等下一輪探索。
 fn add_workspace_path(app: &AppHandle, path: &Path) -> Result<String, CueError> {
     let state = app.state::<AppState>();
@@ -730,5 +757,27 @@ mod tests {
             assert_eq!(err.kind(), "invalid_workspace", "{path:?}");
         }
         assert!(config.workspaces.is_empty());
+    }
+
+    #[test]
+    fn classifies_dropped_paths_into_folders_and_others() {
+        let dir = tempfile::tempdir().unwrap();
+        let folder = dir.path().join("proj");
+        std::fs::create_dir(&folder).unwrap();
+        let file = dir.path().join("a.txt");
+        std::fs::write(&file, "x").unwrap();
+        let link = dir.path().join("link");
+        std::os::unix::fs::symlink(&folder, &link).unwrap();
+        let s = |p: &Path| p.to_string_lossy().into_owned();
+
+        let result = classify_paths(vec![
+            s(&file),
+            s(&folder),
+            s(&dir.path().join("missing")),
+            s(&link),
+            "relative/dir".into(),
+        ]);
+        assert_eq!(result.folders, vec![s(&folder), s(&link)]);
+        assert_eq!(result.others, vec![s(&file), s(&dir.path().join("missing")), "relative/dir".to_string()]);
     }
 }
