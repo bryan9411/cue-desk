@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { OpenMode } from "../ipc/api";
-import type { BackendInfo, Capabilities, CueError, SessionNode, Snapshot, Workspace } from "../types";
+import type { BackendInfo, BranchChange, Capabilities, CueError, SessionNode, Snapshot, Workspace } from "../types";
 
 // 所有 session 狀態更新只經由 applySnapshot()，不要在別處直接改 sessions。
 export interface CueState {
@@ -21,6 +21,8 @@ export interface CueState {
 
   /** 以 Rust 送來的完整快照取代目前狀態。 */
   applySnapshot: (snapshot: Snapshot) => void;
+  /** 套用單一工作區的分支變動；工作區不存在或值相同時不改變狀態。 */
+  applyBranchUpdate: (change: BranchChange) => void;
   setLastError: (error: CueError | null) => void;
   openCreateModal: (workspaceId: string) => void;
   closeCreateModal: () => void;
@@ -46,6 +48,15 @@ export const useCue = create<CueState>()((set) => ({
       preferredOpenMode: snapshot.preferredOpenMode,
     });
   },
+  applyBranchUpdate: ({ workspaceId, branch, detached }) =>
+    set((state) => {
+      const index = state.workspaces.findIndex((w) => w.id === workspaceId);
+      const current = state.workspaces[index];
+      if (!current || (current.branch === branch && current.detached === detached)) return state;
+      const workspaces = state.workspaces.slice();
+      workspaces[index] = { ...current, branch, detached };
+      return { workspaces };
+    }),
   setLastError: (lastError) => set({ lastError }),
   openCreateModal: (workspaceId) => set({ createModal: { workspaceId } }),
   closeCreateModal: () => set({ createModal: null }),

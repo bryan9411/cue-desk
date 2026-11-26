@@ -17,7 +17,7 @@ const backend: BackendInfo = {
 };
 
 function ws(id: string): Workspace {
-  return { id, path: `/proj/${id}`, name: id, collapsed: false };
+  return { id, path: `/proj/${id}`, name: id, collapsed: false, branch: "main", detached: false };
 }
 
 function node(id: string, workspaceId: string | null, windowId: number, tabIndex: number, alive = true): SessionNode {
@@ -133,5 +133,31 @@ describe("applySnapshot", () => {
     const state = useCue.getState();
     expect(selectWorkspaceGroups(state)).toBe(selectWorkspaceGroups(state));
     expect(selectUnclassified(state)).toBe(selectUnclassified(state));
+  });
+});
+
+describe("applyBranchUpdate", () => {
+  beforeEach(() => {
+    useCue.setState({ workspaces: [ws("a"), ws("b")] });
+  });
+
+  it("只更新對應工作區的分支", () => {
+    const before = useCue.getState().workspaces;
+    useCue.getState().applyBranchUpdate({ workspaceId: "b", branch: "HEAD abc1234", detached: true });
+    const after = useCue.getState().workspaces;
+    expect(after[1]).toEqual({ ...ws("b"), branch: "HEAD abc1234", detached: true });
+    expect(after[0]).toBe(before[0]);
+  });
+
+  it("非 Git 時分支為 null", () => {
+    useCue.getState().applyBranchUpdate({ workspaceId: "a", branch: null, detached: false });
+    expect(useCue.getState().workspaces[0].branch).toBeNull();
+  });
+
+  it("未知工作區或值相同時不換參照", () => {
+    const before = useCue.getState().workspaces;
+    useCue.getState().applyBranchUpdate({ workspaceId: "missing", branch: "x", detached: false });
+    useCue.getState().applyBranchUpdate({ workspaceId: "a", branch: "main", detached: false });
+    expect(useCue.getState().workspaces).toBe(before);
   });
 });

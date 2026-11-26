@@ -45,12 +45,21 @@
   - 工作區新增／移除時同步建立／移除 watcher；`get_snapshot` 的 workspace 帶初始分支。
 - **驗證**：`#[ignore]` 整合測試：tempdir 中 `git init`、`git switch -c feature`，1 秒內收到事件；本機以真實 repo 操作。
 
-### 3-4-03 feat: 側邊欄分支徽章
+### 3-4-03a feat: 前端同步分支狀態
+- **UI**：否
+- **預計檔案**（6）：`src/types.ts`、`src/ipc/events.ts`、`src/store/useCue.ts`、`src/App.tsx`、`src/__tests__/events.test.ts`、`src/__tests__/useCue.test.ts`
+- **實作重點**：
+  - `Workspace` 型別加入 `branch: string | null`、`detached: boolean`（與 Rust `WorkspaceView` 一致）；新增 `BranchChange` 型別。
+  - `events.ts` 新增 `onBranchChanged()` 訂閱 `git-branch-changed`；`App.tsx` 與快照一起訂閱。
+  - store 新增 `applyBranchUpdate()`：只更新對應工作區；未知工作區或值相同時不產生新狀態。
+  - 快照與分支事件順序交錯時，以 Rust 下一輪探索送出的快照校正（快照只在內容變動時送出，分支變動會讓快照不同）。
+- **驗證**：Vitest：`applyBranchUpdate` 更新、忽略未知工作區、值相同不換參照；`onBranchChanged` 訂閱正確事件並轉交內容。
+
+### 3-4-03b feat: 側邊欄分支徽章
 - **UI**：是
-- **預計檔案**（5）：`src/components/sidebar/BranchBadge.tsx`、`src/components/sidebar/WorkspaceNode.tsx`、`src/ipc/events.ts`、`src/store/useCue.ts`、`src/index.css`
+- **預計檔案**（4）：`src/components/sidebar/BranchBadge.tsx`、`src/components/icons/Icons.tsx`、`src/components/sidebar/WorkspaceNode.tsx`、`src/index.css`
 - **實作重點**：
   - `BranchBadge`：細線分支 SVG 圖示＋分支名（`--font-mono`、`--text-muted`、`--radius-sm` 外框）；Detached 時顯示 `HEAD abc1234`；非 Git 顯示「非 Git」。過長分支名以省略號截斷並以 `title` 顯示全名。
   - 不提供任何 Worktree 巢狀管理 UI。
-  - store 新增 `applyBranchUpdate()`。
   - 包浩斯主題的「分支徽章反白」由 4-1 的主題變數控制（例如 `--branch-badge-bg`、`--branch-badge-fg`，預設透明／`--text-muted`），本 Commit 先使用這兩個變數並在 `index.css` 給預設值。
 - **驗證**：`pnpm build`；本機 `git switch` 後 ≤ 1 秒徽章更新。

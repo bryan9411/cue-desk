@@ -1,13 +1,18 @@
 import { useEffect } from "react";
 import { CreateSessionModal } from "./components/CreateSessionModal";
 import { Sidebar } from "./components/sidebar/Sidebar";
-import { subscribeSnapshots } from "./ipc/events";
+import { onBranchChanged, subscribeSnapshots } from "./ipc/events";
 import { useCue } from "./store/useCue";
 
 function App() {
   useEffect(() => {
-    const { applySnapshot, setLastError } = useCue.getState();
-    return subscribeSnapshots(applySnapshot, setLastError);
+    const { applySnapshot, applyBranchUpdate, setLastError } = useCue.getState();
+    const stopSnapshots = subscribeSnapshots(applySnapshot, setLastError);
+    const stopBranches = onBranchChanged(applyBranchUpdate);
+    return () => {
+      stopSnapshots();
+      stopBranches();
+    };
   }, []);
   const createModal = useCue((s) => s.createModal);
 

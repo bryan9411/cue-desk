@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Snapshot } from "../types";
+import type { BranchChange, Snapshot } from "../types";
 
-type Handler = (event: { payload: Snapshot }) => void;
+type Handler = (event: { payload: unknown }) => void;
 
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
@@ -13,12 +13,12 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 
-import { subscribeSnapshots } from "../ipc/events";
+import { onBranchChanged, subscribeSnapshots } from "../ipc/events";
 import { focusSession } from "../ipc/api";
 
 function snap(tag: string): Snapshot {
   return {
-    workspaces: [{ id: tag, path: `/${tag}`, name: tag, collapsed: false }],
+    workspaces: [{ id: tag, path: `/${tag}`, name: tag, collapsed: false, branch: null, detached: false }],
     sessions: [],
     unclassified: [],
     backend: {
@@ -90,6 +90,37 @@ describe("subscribeSnapshots", () => {
     subscribeSnapshots(() => {}, (e) => errors.push(e));
     await flush();
     expect(errors).toEqual([{ kind: "io", message: "壞了" }]);
+  });
+});
+
+describe("onBranchChanged", () => {
+  beforeEach(() => {
+    mocks.handlers.length = 0;
+    mocks.unlisten.mockReset();
+    mocks.listen.mockReset().mockImplementation(async (_name: string, h: Handler) => {
+      mocks.handlers.push(h);
+      return mocks.unlisten;
+    });
+  });
+
+  it("訂閱 git-branch-changed 並轉交內容", async () => {
+    const got: BranchChange[] = [];
+    onBranchChanged((c) => got.push(c));
+    await flush();
+    expect(mocks.listen).toHaveBeenCalledWith("git-branch-changed", expect.any(Function));
+    const change: BranchChange = { workspaceId: "w1", branch: "feature/x", detached: false };
+    mocks.handlers[0]({ payload: change });
+    expect(got).toEqual([change]);
+  });
+
+  it("取消後不再轉交，並解除事件訂閱", async () => {
+    const got: BranchChange[] = [];
+    const stop = onBranchChanged((c) => got.push(c));
+    await flush();
+    stop();
+    mocks.handlers[0]({ payload: { workspaceId: "w1", branch: "main", detached: false } });
+    expect(got).toEqual([]);
+    expect(mocks.unlisten).toHaveBeenCalledTimes(1);
   });
 });
 

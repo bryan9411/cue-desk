@@ -41,6 +41,16 @@ export interface Workspace {
   path: string;
   name: string;
   collapsed: boolean;
+  /** 分支顯示字串（Detached 時為 `HEAD <前 7 碼>`）；非 Git 時為 `null`。 */
+  branch: string | null;
+  detached: boolean;
+}
+
+/** `git-branch-changed` 事件內容：單一工作區的分支變動。 */
+export interface BranchChange {
+  workspaceId: string;
+  branch: string | null;
+  detached: boolean;
 }
 
 /** 後端支援的操作，前端依此停用不支援的功能。 */
