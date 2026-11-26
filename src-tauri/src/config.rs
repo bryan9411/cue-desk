@@ -123,6 +123,29 @@ impl CueConfig {
         }
         self.nodes.entry(node_id).or_default().label = Some(label.to_owned());
     }
+
+    /// 忘掉節點的所有紀錄（標籤、最後狀態、忽略）。回傳是否有變動。
+    pub fn forget_node(&mut self, node_id: &str) -> bool {
+        let before = self.ignored.len();
+        self.ignored.retain(|id| id != node_id);
+        self.nodes.remove(node_id).is_some() | (self.ignored.len() != before)
+    }
+
+    /// 把未歸類的工作階段加入忽略清單。回傳是否有變動（已在清單中就不必寫檔）。
+    pub fn ignore_node(&mut self, node_id: &str) -> bool {
+        if self.ignored.iter().any(|id| id == node_id) {
+            return false;
+        }
+        self.ignored.push(node_id.to_owned());
+        true
+    }
+
+    /// 從清單移除工作區；只動設定，不碰磁碟上的任何檔案。回傳是否有找到。
+    pub fn remove_workspace(&mut self, workspace_id: &str) -> bool {
+        let before = self.workspaces.len();
+        self.workspaces.retain(|w| w.id != workspace_id);
+        self.workspaces.len() != before
+    }
 }
 
 /// 驗證並整理使用者輸入的標籤：去掉前後空白，拒絕過長或含控制字元的標籤。
@@ -373,6 +396,24 @@ fn writer_loop(rx: mpsc::Receiver<WriterMsg>, path: &Path, debounce: Duration) {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn forget_ignore_and_remove_workspace_report_changes() {
+        let mut c = sample_config();
+        c.ignored.clear();
+        assert!(c.ignore_node("iterm2:ABC-123"));
+        assert!(!c.ignore_node("iterm2:ABC-123"), "重複忽略不算變動");
+        assert_eq!(c.ignored, ["iterm2:ABC-123"]);
+
+        assert!(c.forget_node("iterm2:ABC-123"));
+        assert!(!c.nodes.contains_key("iterm2:ABC-123"));
+        assert!(c.ignored.is_empty());
+        assert!(!c.forget_node("iterm2:ABC-123"));
+
+        assert!(!c.remove_workspace("ws-missing"));
+        assert!(c.remove_workspace("ws-1"));
+        assert!(c.workspaces.is_empty());
+    }
 
     fn sample_config() -> CueConfig {
         let mut c = CueConfig::default();

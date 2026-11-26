@@ -31,6 +31,11 @@ pub fn run() {
             commands::split_zsh,
             commands::rename_session,
             commands::close_session,
+            commands::reopen_session,
+            commands::remove_node,
+            commands::set_as_workspace,
+            commands::ignore_session,
+            commands::remove_workspace,
         ])
         .setup(|app| {
             discovery::spawn(app.handle().clone());

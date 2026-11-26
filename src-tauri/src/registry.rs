@@ -170,9 +170,9 @@ impl Registry {
             node.status = Status::Exited;
         }
 
-        // 歸屬、標籤與名稱每輪重算；已結束的節點以最後 cwd 重新歸屬，工作區移除後不會指向不存在的 id。
+        // 歸屬、標籤與名稱每輪重算。
+        self.reattribute(roots);
         for node in &mut self.nodes {
-            node.workspace_id = node.cwd.as_deref().and_then(|cwd| roots.attribute(cwd));
             node.label = config
                 .nodes
                 .get(&node.id)
@@ -188,6 +188,14 @@ impl Registry {
 
         let config_changed = sync_config(&self.nodes, config);
         MergeOutcome { nodes_changed: self.nodes != before, config_changed }
+    }
+
+    /// 依工作區根目錄重算所有節點的歸屬。已結束的節點以最後 cwd 歸屬，
+    /// 工作區被移除後不會留下指向不存在 id 的節點。
+    pub fn reattribute(&mut self, roots: &WorkspaceRoots<String>) {
+        for node in &mut self.nodes {
+            node.workspace_id = node.cwd.as_deref().and_then(|cwd| roots.attribute(cwd));
+        }
     }
 
     /// 移除已結束的節點（使用者按「移除」）。存活的節點不可移除，回傳 `false`。
@@ -251,7 +259,12 @@ fn sync_config(nodes: &[SessionNode], config: &mut CueConfig) -> bool {
     let known: HashSet<&str> = nodes.iter().map(|n| n.id.as_str()).collect();
     let before = config.nodes.len();
     config.nodes.retain(|id, meta| meta.label.is_some() || known.contains(id.as_str()));
-    changed | (config.nodes.len() != before)
+    changed |= config.nodes.len() != before;
+
+    // 終端機重新啟動後身分不會再出現，忽略清單只保留仍認得的節點，避免無限累積。
+    let before = config.ignored.len();
+    config.ignored.retain(|id| known.contains(id.as_str()));
+    changed | (config.ignored.len() != before)
 }
 
 fn replace<T: PartialEq>(slot: &mut T, value: T) -> bool {
@@ -642,6 +655,42 @@ mod tests {
 
         cfg.workspaces.retain(|w| w.id != "a");
         merge(&mut reg, &mut cfg, &[], &procs);
+        assert_eq!(node(&reg, "iterm2:A").workspace_id, None);
+    }
+
+    #[test]
+    fn ignored_ids_are_pruned_once_unknown() {
+        let mut reg = Registry::new();
+        let mut cfg = config();
+        cfg.ignored = vec!["iterm2:A".into(), "iterm2:OLD".into()];
+        let procs = Procs::default().with("ttys001", 11, SessionKind::Zsh, Some(HOME));
+
+        assert!(merge(&mut reg, &mut cfg, &[iterm("A", "ttys001", 1, 1)], &procs).config_changed);
+        assert_eq!(cfg.ignored, ["iterm2:A"]);
+
+        // 已結束但仍在登錄中時保留；移除節點後才清掉
+        merge(&mut reg, &mut cfg, &[], &procs);
+        assert_eq!(cfg.ignored, ["iterm2:A"]);
+        assert!(reg.remove("iterm2:A"));
+        assert!(merge(&mut reg, &mut cfg, &[], &procs).config_changed);
+        assert!(cfg.ignored.is_empty());
+    }
+
+    #[test]
+    fn reattribute_applies_new_workspace_roots_immediately() {
+        let mut reg = Registry::new();
+        let mut cfg = config();
+        let procs = Procs::default().with("ttys001", 11, SessionKind::Zsh, Some(HOME));
+        merge(&mut reg, &mut cfg, &[iterm("A", "ttys001", 1, 1)], &procs);
+        assert_eq!(reg.unclassified(&cfg.ignored).count(), 1);
+
+        cfg.workspaces.push(Workspace::new("home".into(), PathBuf::from(HOME)));
+        reg.reattribute(&roots(&cfg));
+        assert_eq!(node(&reg, "iterm2:A").workspace_id.as_deref(), Some("home"));
+        assert_eq!(reg.unclassified(&cfg.ignored).count(), 0);
+
+        cfg.workspaces.retain(|w| w.id != "home");
+        reg.reattribute(&roots(&cfg));
         assert_eq!(node(&reg, "iterm2:A").workspace_id, None);
     }
 

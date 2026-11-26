@@ -29,6 +29,8 @@ pub enum CueError {
     Unsupported,
     /// 工作階段已結束，無法操作。
     SessionExited,
+    /// 工作階段仍存在，只有已結束的節點能重新開啟或移除。
+    SessionAlive,
     /// 找不到指定的工作區。
     WorkspaceNotFound,
     /// 無法加入工作區（路徑不存在或不是資料夾），內容為原因。
@@ -51,6 +53,7 @@ impl CueError {
             CueError::Script(_) => "script",
             CueError::Unsupported => "unsupported",
             CueError::SessionExited => "session_exited",
+            CueError::SessionAlive => "session_alive",
             CueError::WorkspaceNotFound => "workspace_not_found",
             CueError::InvalidWorkspace(_) => "invalid_workspace",
             CueError::UnsafePath => "unsafe_path",
@@ -102,6 +105,7 @@ impl fmt::Display for CueError {
             CueError::Script(msg) => write!(f, "終端機腳本錯誤：{msg}"),
             CueError::Unsupported => write!(f, "目前的終端機不支援這個操作"),
             CueError::SessionExited => write!(f, "這個工作階段已結束"),
+            CueError::SessionAlive => write!(f, "這個工作階段仍在執行"),
             CueError::WorkspaceNotFound => write!(f, "找不到指定的工作區"),
             CueError::InvalidWorkspace(msg) => write!(f, "無法加入工作區：{msg}"),
             CueError::UnsafePath => write!(f, "路徑含有換行或控制字元，無法安全送入終端機"),

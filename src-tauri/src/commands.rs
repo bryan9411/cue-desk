@@ -3,6 +3,7 @@
 //! 會呼叫 osascript 的指令都是 `async`，在 `spawn_blocking` 中執行，不阻塞主執行緒。
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use tauri::{AppHandle, Manager, State};
 
@@ -10,9 +11,10 @@ use crate::config::{self, CueConfig, Workspace};
 use crate::discovery;
 use crate::error::CueError;
 use crate::layout;
-use crate::model::SessionKey;
+use crate::model::{SessionKey, SessionKind};
+use crate::registry::SessionNode;
 use crate::shell::SessionKindToCreate;
-use crate::state::{lock, AppState, Snapshot};
+use crate::state::{lock, workspace_roots, AppState, Snapshot};
 use crate::terminal::{
     Capabilities, CreateSpec, CreatedSession, OpenMode, SplitDirection, TerminalBackend,
 };
@@ -74,19 +76,7 @@ pub async fn create_session(
     };
 
     let spec = CreateSpec { workspace_path, kind, label, mode, target_window };
-    let (created, spec) = tauri::async_runtime::spawn_blocking(move || {
-        let created = backend.create(&spec);
-        if let (Ok(created), Some(label)) = (&created, &spec.label) {
-            // 標題同步失敗不影響建立結果：標籤已綁在 Cue 的節點上。
-            if let Err(e) = sync_title(backend.as_ref(), &created.key, label) {
-                eprintln!("[cue] 無法同步新工作階段的標題：{e}");
-            }
-        }
-        (created, spec)
-    })
-    .await
-    .map_err(|e| CueError::Io(format!("建立工作階段的工作異常結束：{e}")))?;
-    let created = created?;
+    let created = create_with_title(backend, &spec).await?;
 
     {
         let mut config = lock(&state.config);
@@ -95,6 +85,167 @@ pub async fn create_session(
     }
     state.trigger_discovery();
     Ok(created.key.as_id())
+}
+
+/// 建立工作階段；帶標籤時同步終端機標題。
+async fn create_with_title(backend: Arc<dyn TerminalBackend>, spec: &CreateSpec) -> Result<CreatedSession, CueError> {
+    let spec = spec.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let created = backend.create(&spec)?;
+        if let Some(label) = &spec.label {
+            // 標題同步失敗不影響建立結果：標籤已綁在 Cue 的節點上。
+            if let Err(e) = sync_title(backend.as_ref(), &created.key, label) {
+                eprintln!("[cue] 無法同步新工作階段的標題：{e}");
+            }
+        }
+        Ok(created)
+    })
+    .await
+    .map_err(|e| CueError::Io(format!("建立工作階段的工作異常結束：{e}")))?
+}
+
+/// 重新開啟已結束的節點：以相同類型、標籤與最後 cwd 建立新工作階段，回傳新節點的 id。
+///
+/// 新節點繼承標籤，舊節點與其設定紀錄一併移除。
+#[tauri::command]
+pub async fn reopen_session(app: AppHandle, id: String) -> Result<String, CueError> {
+    let state = app.state::<AppState>();
+    let backend = state.backend();
+    let spec = {
+        let config = lock(&state.config);
+        let registry = lock(&state.registry);
+        let node = registry.get(&id).ok_or(CueError::ObjectNotFound)?;
+        let plan = reopen_plan(node, &config)?;
+        let mode = reopen_mode(config.preferred_open_mode(), backend.capabilities());
+        let target_window = match (mode, &plan.workspace_id) {
+            (OpenMode::NewTab, Some(ws)) => layout::resolve_new_tab_target(ws, &registry),
+            _ => None,
+        };
+        CreateSpec { workspace_path: plan.cwd, kind: plan.kind, label: plan.label, mode, target_window }
+    };
+    if !spec.workspace_path.is_dir() {
+        return Err(CueError::InvalidWorkspace("最後的工作目錄已不存在".into()));
+    }
+    let created = create_with_title(backend, &spec).await?;
+
+    let new_id = created.key.as_id();
+    {
+        let mut config = lock(&state.config);
+        let mut registry = lock(&state.registry);
+        config.forget_node(&id);
+        if let Some(label) = &spec.label {
+            config.set_node_label(new_id.clone(), label);
+        }
+        registry.remove(&id);
+        state.save_config(&config);
+    }
+    discovery::publish(&app);
+    state.trigger_discovery();
+    Ok(new_id)
+}
+
+/// 重新開啟所需的參數。
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ReopenPlan {
+    kind: SessionKindToCreate,
+    cwd: PathBuf,
+    label: Option<String>,
+    /// 舊節點最後的歸屬，用來挑選新分頁的目標視窗。
+    workspace_id: Option<String>,
+}
+
+/// 由已結束的節點推導重新開啟的參數。只能啟動固定的三種類型，其他程式以 zsh 開回原資料夾。
+fn reopen_plan(node: &SessionNode, config: &CueConfig) -> Result<ReopenPlan, CueError> {
+    if node.alive {
+        return Err(CueError::SessionAlive);
+    }
+    let kind = match node.kind {
+        SessionKind::Claude => SessionKindToCreate::Claude,
+        SessionKind::Gemini => SessionKindToCreate::Gemini,
+        SessionKind::Zsh | SessionKind::Other(_) => SessionKindToCreate::Zsh,
+    };
+    let cwd = node
+        .cwd
+        .clone()
+        .or_else(|| config.nodes.get(&node.id).and_then(|m| m.last_cwd.clone()))
+        .ok_or_else(|| CueError::InvalidWorkspace("無法取得這個工作階段最後的工作目錄".into()))?;
+    Ok(ReopenPlan { kind, cwd, label: node.label.clone(), workspace_id: node.workspace_id.clone() })
+}
+
+/// 重新開啟的開啟方式：沿用使用者的預設，但只建立一個工作階段。
+/// 分割開啟方式會多開一個 zsh 窗格，改用新分頁；後端不支援分頁時開新視窗。
+fn reopen_mode(preferred: Option<OpenMode>, caps: Capabilities) -> OpenMode {
+    match preferred {
+        Some(OpenMode::NewWindow) => OpenMode::NewWindow,
+        _ if caps.new_tab => OpenMode::NewTab,
+        _ => OpenMode::NewWindow,
+    }
+}
+
+/// 移除已結束的節點與它在設定檔中的紀錄（含標籤）。
+#[tauri::command]
+pub fn remove_node(app: AppHandle, id: String) -> Result<(), CueError> {
+    let state = app.state::<AppState>();
+    {
+        let mut config = lock(&state.config);
+        let mut registry = lock(&state.registry);
+        let node = registry.get(&id).ok_or(CueError::ObjectNotFound)?;
+        if node.alive {
+            return Err(CueError::SessionAlive);
+        }
+        registry.remove(&id);
+        if config.forget_node(&id) {
+            state.save_config(&config);
+        }
+    }
+    discovery::publish(&app);
+    Ok(())
+}
+
+/// 以未歸類工作階段的 cwd 加入工作區，回傳工作區 id；該工作階段隨即依 cwd 規則歸入。
+#[tauri::command]
+pub fn set_as_workspace(app: AppHandle, session_id: String) -> Result<String, CueError> {
+    let cwd = {
+        let state = app.state::<AppState>();
+        let registry = lock(&state.registry);
+        let node = registry.get(&session_id).ok_or(CueError::ObjectNotFound)?;
+        node.cwd.clone().ok_or_else(|| CueError::InvalidWorkspace("無法取得這個工作階段的工作目錄".into()))?
+    };
+    add_workspace_path(&app, &cwd)
+}
+
+/// 未歸類區的「忽略」：之後不再列入未歸類區（進入工作區後照常顯示）。
+#[tauri::command]
+pub fn ignore_session(app: AppHandle, session_id: String) -> Result<(), CueError> {
+    let state = app.state::<AppState>();
+    {
+        let mut config = lock(&state.config);
+        if lock(&state.registry).get(&session_id).is_none() {
+            return Err(CueError::ObjectNotFound);
+        }
+        if !config.ignore_node(&session_id) {
+            return Ok(());
+        }
+        state.save_config(&config);
+    }
+    discovery::publish(&app);
+    Ok(())
+}
+
+/// 從清單移除工作區（不刪除任何檔案），其下的工作階段立即依 cwd 規則重新歸屬。
+#[tauri::command]
+pub fn remove_workspace(app: AppHandle, id: String) -> Result<(), CueError> {
+    let state = app.state::<AppState>();
+    {
+        let mut config = lock(&state.config);
+        if !config.remove_workspace(&id) {
+            return Err(CueError::WorkspaceNotFound);
+        }
+        state.save_config(&config);
+        lock(&state.registry).reattribute(&workspace_roots(&config));
+    }
+    discovery::publish(&app);
+    Ok(())
 }
 
 /// 重新命名工作階段。`label` 為空字串時清除標籤，節點回到預設名稱。
@@ -252,18 +403,23 @@ fn record_created(config: &mut CueConfig, created: &CreatedSession, spec: &Creat
 /// 加入工作區：驗證為資料夾、取 realpath、去重。回傳工作區 id（已存在時回傳既有的 id）。
 #[tauri::command]
 pub fn add_workspace(app: AppHandle, path: String) -> Result<String, CueError> {
+    add_workspace_path(&app, Path::new(&path))
+}
+
+/// 加入工作區並立即重算既有節點的歸屬，不等下一輪探索。
+fn add_workspace_path(app: &AppHandle, path: &Path) -> Result<String, CueError> {
     let state = app.state::<AppState>();
     let (id, added) = {
         let mut config = lock(&state.config);
-        let result = insert_workspace(&mut config, Path::new(&path))?;
+        let result = insert_workspace(&mut config, path)?;
         if result.1 {
             state.save_config(&config);
+            lock(&state.registry).reattribute(&workspace_roots(&config));
         }
         result
     };
     if added {
-        discovery::publish(&app);
-        state.trigger_discovery();
+        discovery::publish(app);
     }
     Ok(id)
 }
@@ -425,6 +581,75 @@ mod tests {
         record_created(&mut config, &created, &spec);
         assert!(!config.nodes.contains_key("terminal:7:ttys001"));
         assert_eq!(config.preferred_open_mode(), Some(OpenMode::NewWindow));
+    }
+
+    fn exited_node(kind: SessionKind, cwd: Option<&str>) -> SessionNode {
+        SessionNode {
+            id: "iterm2:OLD".into(),
+            key: SessionKey::Iterm2 { unique_id: "OLD".into() },
+            kind,
+            status: crate::model::Status::Exited,
+            workspace_id: Some("ws1".into()),
+            cwd: cwd.map(PathBuf::from),
+            tty: "ttys001".into(),
+            label: Some("權限架構".into()),
+            default_name: "claude".into(),
+            location_hint: "視窗 1 · 分頁 1".into(),
+            window_id: 1,
+            window_index: 1,
+            tab_index: 1,
+            alive: false,
+        }
+    }
+
+    #[test]
+    fn reopen_keeps_kind_label_and_last_cwd() {
+        let config = CueConfig::default();
+        let plan = reopen_plan(&exited_node(SessionKind::Claude, Some("/repo/src")), &config).unwrap();
+        assert_eq!(
+            plan,
+            ReopenPlan {
+                kind: SessionKindToCreate::Claude,
+                cwd: PathBuf::from("/repo/src"),
+                label: Some("權限架構".into()),
+                workspace_id: Some("ws1".into()),
+            }
+        );
+
+        let gemini = reopen_plan(&exited_node(SessionKind::Gemini, Some("/r")), &config).unwrap();
+        assert_eq!(gemini.kind, SessionKindToCreate::Gemini);
+        let zsh = reopen_plan(&exited_node(SessionKind::Zsh, Some("/r")), &config).unwrap();
+        assert_eq!(zsh.kind, SessionKindToCreate::Zsh);
+        let other = reopen_plan(&exited_node(SessionKind::Other("vim".into()), Some("/r")), &config).unwrap();
+        assert_eq!(other.kind, SessionKindToCreate::Zsh, "其他程式以 zsh 開回原資料夾");
+    }
+
+    #[test]
+    fn reopen_falls_back_to_recorded_cwd_and_rejects_alive_nodes() {
+        let mut config = CueConfig::default();
+        let node = exited_node(SessionKind::Claude, None);
+        assert!(matches!(reopen_plan(&node, &config), Err(CueError::InvalidWorkspace(_))));
+
+        config.nodes.entry(node.id.clone()).or_default().last_cwd = Some(PathBuf::from("/recorded"));
+        assert_eq!(reopen_plan(&node, &config).unwrap().cwd, PathBuf::from("/recorded"));
+
+        let alive = SessionNode { alive: true, ..exited_node(SessionKind::Claude, Some("/r")) };
+        assert_eq!(reopen_plan(&alive, &config), Err(CueError::SessionAlive));
+    }
+
+    #[test]
+    fn reopen_opens_a_single_session() {
+        let tabs = Capabilities { new_tab: true, split: true, ..Capabilities::default() };
+        assert_eq!(reopen_mode(None, tabs), OpenMode::NewTab);
+        assert_eq!(reopen_mode(Some(OpenMode::NewWindow), tabs), OpenMode::NewWindow);
+        for split in [OpenMode::AiTopZshBottom, OpenMode::AiLeftZshRight] {
+            assert_eq!(reopen_mode(Some(split), tabs), OpenMode::NewTab, "{split:?}");
+        }
+
+        let none = Capabilities::default();
+        for mode in [None, Some(OpenMode::NewTab), Some(OpenMode::AiTopZshBottom)] {
+            assert_eq!(reopen_mode(mode, none), OpenMode::NewWindow, "{mode:?}");
+        }
     }
 
     #[test]

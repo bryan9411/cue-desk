@@ -85,6 +85,7 @@ export type CueErrorKind =
   | "script"
   | "unsupported"
   | "session_exited"
+  | "session_alive"
   | "workspace_not_found"
   | "invalid_workspace"
   | "unsafe_path"
