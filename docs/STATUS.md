@@ -31,7 +31,7 @@
   - [x] 1-1-04 chore: 加入 verify 檢查指令
 - [ ] **slice-1-2 技術探針** → `docs/slices/slice-1-2.md`
   - [x] 1-2-01 feat: osascript 執行器與分隔字元解析
-  - [ ] 1-2-02 spike: iTerm2 與 Terminal.app 探索腳本探針
+  - [x] 1-2-02 spike: iTerm2 與 Terminal.app 探索腳本探針
   - [ ] 1-2-03 spike: 前景程式工作目錄取得方式探針
   - [ ] 1-2-04 docs: 外部依賴與協定調查筆記
   - [ ] 👤 1-2-H1 在 iTerm2／Terminal.app 準備情境並回報探針輸出
