@@ -14,7 +14,7 @@
 ## 完成條件
 
 - 移到卡片上即時預覽（主面板與偏好設定視窗同時變）、移開或按 Esc 還原、點擊或 Enter／空白鍵才套用。
-- 開啟「跟隨系統深淺色」後，在系統設定切換深淺色，Baton 在 1 秒內換成對應主題。
+- 開啟「跟隨系統深淺色」後，在系統設定切換深淺色，Cue 在 1 秒內換成對應主題。
 - 偏好設定視窗位置與所有偏好持久化。
 
 ---
@@ -38,7 +38,7 @@
   - **一般**：新工作階段預設開啟方式（`defaultOpenMode`；選項「記住上次選擇」＝不設定）、視窗置頂。
   - **終端機**：終端機後端（自動偵測／iTerm2／終端機），切換後立即生效（`set_terminal_backend` 重新選擇後端並重新探索）；未安裝 iTerm2 時該選項停用並說明。iTerm2 Socket 精準分頁開關與開啟引導（「於 iTerm2 勾選 `Settings › General › Magic › Enable Python API`，無須安裝 Python 或開啟輔助使用權限；首次連線 iTerm2 可能詢問一次」）——開關本身在 7-2-05 生效，本 Commit 先顯示為停用並註明「即將推出」。
   - **通知**：音效開關、macOS 通知開關（`preferences.notificationsEnabled`，預設 true；5-2-02 使用）。
-  - **進階**：在 Finder 開啟 `~/.baton`、顯示 Hook 腳本路徑 `~/.baton/bin/baton-notify`。
+  - **進階**：在 Finder 開啟 `~/.cue`、顯示 Hook 腳本路徑 `~/.cue/bin/cue-notify`。
 - **驗證**：每個設定變更後重開仍保留，主視窗即時反映。
 
 ### 4-3-03 feat: 外觀分頁的主題縮圖與即時預覽

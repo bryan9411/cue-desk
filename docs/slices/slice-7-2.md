@@ -16,7 +16,7 @@
 
 ## 規格摘要
 
-- 連線：Rust 後端透過既有 AppleScript 自動化權限，以 `request cookie and key for app named "Baton"` 取得 Cookie 與 Key，連線至 `~/Library/Application Support/iTerm2/private/socket`（WebSocket + Protobuf）——無須 Python、無須輔助使用權限、零網路 Port。首次連線 iTerm2 可能顯示授權詢問，屬正常流程。
+- 連線：Rust 後端透過既有 AppleScript 自動化權限，以 `request cookie and key for app named "Cue"` 取得 Cookie 與 Key，連線至 `~/Library/Application Support/iTerm2/private/socket`（WebSocket + Protobuf）——無須 Python、無須輔助使用權限、零網路 Port。首次連線 iTerm2 可能顯示授權詢問，屬正常流程。
 - **授權限制（強制）**：禁止 GPL 依賴（`iterm2-client` crate 不可用）；以 `tokio-tungstenite` + `prost` 自行實作最小子集；`api.proto` 依 001 決定處理。
 - **Cookie 與 Key 只保存在記憶體**，不得寫入設定檔、log、錯誤訊息或前端狀態；斷線重連時重新申請。
 - 啟用後解鎖：從 `Cmd + T` 混裝視窗「單獨抽出單一分頁移至螢幕 2」、「只抽回單一工作區分頁並合併進同一個工作區視窗」、「一鍵依工作區自動分家（1 工作區 = 1 專屬視窗）」；改用事件訂閱（新工作階段、工作階段結束、版面變動）即時更新，輪詢降為每 10 秒一次的保險同步。
@@ -44,7 +44,7 @@
 - **UI**：否
 - **預計檔案**（6）：`src-tauri/src/iterm2_api/auth.rs`、`src-tauri/src/iterm2_api/conn.rs`、`src-tauri/src/terminal/scripts/iterm2_request_cookie.applescript`、`src-tauri/src/iterm2_api/mod.rs`、`src-tauri/Cargo.toml`、`src-tauri/src/lib.rs`
 - **實作重點**：
-  - `auth.rs`：以固定腳本執行 `request cookie and key for app named "Baton"`（App 名稱為腳本內固定字串）；結果包成 `Secret` 型別：**不實作 `Debug`／`Display`／`Serialize`／`Clone`**，以 `zeroize` 於 drop 時清除；osascript 的 stdout 只在此函式內解析，錯誤訊息不得包含原始輸出。
+  - `auth.rs`：以固定腳本執行 `request cookie and key for app named "Cue"`（App 名稱為腳本內固定字串）；結果包成 `Secret` 型別：**不實作 `Debug`／`Display`／`Serialize`／`Clone`**，以 `zeroize` 於 drop 時清除；osascript 的 stdout 只在此函式內解析，錯誤訊息不得包含原始輸出。
   - `conn.rs`：`tokio::net::UnixStream` 連 iTerm2 socket → `tokio_tungstenite::client_async`（依 001 的請求 URL、子協定與標頭）；請求／回應以 id 配對（`oneshot`），通知經 `broadcast` 分送。
   - 斷線或驗證失敗時丟棄舊 Secret、重新申請後重連（指數退避，上限 30 秒）；使用者關閉開關時中斷並清除。
   - 狀態列舉：`Disabled`｜`NotEnabledInIterm`（socket 不存在）｜`Connecting`｜`Connected`｜`Unauthorized`，emit `iterm2-api-status`。
@@ -73,7 +73,7 @@
 
 ### 7-2-05 feat: Socket 引擎設定與降級提示
 - **UI**：是
-- **預計檔案**（6）：`src/prefs/tabs/TerminalTab.tsx`、`src/components/sidebar/BottomBar.tsx`、`src/components/sidebar/SessionNode.tsx`、`src/commands/registry.ts`、`src/ipc/api.ts`、`src/store/useBaton.ts`
+- **預計檔案**（6）：`src/prefs/tabs/TerminalTab.tsx`、`src/components/sidebar/BottomBar.tsx`、`src/components/sidebar/SessionNode.tsx`、`src/commands/registry.ts`、`src/ipc/api.ts`、`src/store/useCue.ts`
 - **實作重點**：
   - 偏好設定「終端機」分頁：「iTerm2 Socket 精準分頁」開關生效；顯示連線狀態（未啟用／iTerm2 尚未勾選 Python API／連線中／已連線／未授權），未勾選時顯示開啟引導：「於 iTerm2 勾選 `Settings › General › Magic › Enable Python API`。無須安裝 Python、無須開啟輔助使用權限；首次連線 iTerm2 可能詢問一次。」
   - `precise_tabs` 時：工作階段選單「送到螢幕 2 對照」改為只移動該分頁（不再顯示「連同其他分頁」提示）；工作區選單加「抽回此工作區分頁並合併」；「分頁整理」改為「依工作區分家」。未啟用時維持整窗行為。
@@ -82,5 +82,5 @@
 
 ### 👤 7-2-H1 M6 實機驗收（雙螢幕）
 - 準備「Retina 筆電 + 一般解析度外接螢幕」配置（Dock 放在主螢幕下方或側邊皆可，各試一次更好）。
-- 依本文件「完成條件（M6 驗收）」逐條操作並回報通過／失敗。最後一條可執行：`grep -rniE 'cookie|key' ~/.baton src-tauri/src` 並把結果貼給 Claude 判讀。
+- 依本文件「完成條件（M6 驗收）」逐條操作並回報通過／失敗。最後一條可執行：`grep -rniE 'cookie|key' ~/.cue src-tauri/src` 並把結果貼給 Claude 判讀。
 - Claude 把結果記錄在本文件末尾「驗收紀錄」，失敗項目以新增的 `fix` Commit 修正。

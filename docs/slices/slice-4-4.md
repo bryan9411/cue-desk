@@ -5,7 +5,7 @@
 
 ## 目標
 
-匯入 iTerm2 `.itermcolors`，以與經典配色相同的推導規則產生「我的主題」，存於 `~/.baton/themes/`，可重新命名與刪除。
+匯入 iTerm2 `.itermcolors`，以與經典配色相同的推導規則產生「我的主題」，存於 `~/.cue/themes/`，可重新命名與刪除。
 
 ## 必讀
 
@@ -41,7 +41,7 @@
 - **UI**：是
 - **預計檔案**（7）：`src-tauri/src/custom_themes.rs`、`src-tauri/src/commands.rs`、`src/themes/registry.ts`、`src/prefs/tabs/AppearanceTab.tsx`、`src/components/theme/CustomThemeCard.tsx`、`src/ipc/api.ts`、`src-tauri/src/menu.rs`
 - **實作重點**：
-  - `~/.baton/themes/<id>.json`：`{ id, name, palette }`（id 以 UUID 或時間戳產生，不用使用者輸入）；目錄權限 `0700`；寫入原子化。
+  - `~/.cue/themes/<id>.json`：`{ id, name, palette }`（id 以 UUID 或時間戳產生，不用使用者輸入）；目錄權限 `0700`；寫入原子化。
   - Commands：`import_itermcolors(path)`（前端以 `plugin-dialog` `open({ filters: [{ extensions: ['itermcolors'] }] })` 取得路徑）、`list_custom_themes`、`rename_custom_theme(id, name)`（長度上限、拒絕控制字元）、`delete_custom_theme(id)`（若為目前主題，先改回 `paper`）。
   - 前端 `registry.ts` 載入後以 `deriveTheme(palette, 'custom')` 產生主題，與其他主題同樣支援預覽與提交。
   - 外觀分頁「我的主題」：匯入的主題卡片（同 4-3-03 互動，另有重新命名與刪除按鈕；刪除前以 `ask` 確認），以及「匯入 .itermcolors」按鈕。名稱一律純文字渲染。

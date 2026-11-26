@@ -27,7 +27,7 @@
 ### 👤 1-3-H1 決定 api.proto 與通知外掛的處理方式
 - Claude 會先根據 `notes-research.md` 摘要以下需要你決定的事項與建議（若調查已確認無疑義，該項直接採用建議、不需你決定）：
   1. **iTerm2 `api.proto`**：若授權無法確認與 MIT 相容，建議**不放入該檔**，改為在 Rust 中以 `#[derive(prost::Message)]` 手寫 M6 需要的最小訊息結構（只描述協定的欄位編號與型別），README 註明協定來源。請選擇：手寫最小結構／放入原檔（需確認授權）／M6 不做 Socket 引擎。
-  2. **通知點擊回報**：若 `tauri-plugin-notification` 尚無版本支援 macOS 桌面點擊回報，請選擇替代方案（自行以 `UNUserNotificationCenter` 實作／點擊只帶起 Baton 並聚焦最新一則／暫不支援點擊聚焦）。
+  2. **通知點擊回報**：若 `tauri-plugin-notification` 尚無版本支援 macOS 桌面點擊回報，請選擇替代方案（自行以 `UNUserNotificationCenter` 實作／點擊只帶起 Cue 並聚焦最新一則／暫不支援點擊聚焦）。
   3. 其他調查中標示「待決定」的項目。
 - 完成後告訴 Claude 每一項的選擇。
 

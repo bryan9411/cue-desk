@@ -44,7 +44,7 @@
   - `@keyframes` 只動 `transform` 與 `opacity`（避免 layout）；設 `transform-box: fill-box` 與適當 `transform-origin` 讓部件以關節旋轉。
   - 多張卡片同時 running 時，以 `animation-delay` 依 sessionId 雜湊錯開，避免整齊劃一。
   - 光暈、流光色彩用 `--status-running`、`--accent`、`--char-*`。
-- **驗證**：本機以 `baton-notify running|waiting` 觀察；`npm run lint:style`。
+- **驗證**：本機以 `cue-notify running|waiting` 觀察；`npm run lint:style`。
 
 ### 6-2-02 feat: done、idle 動畫與 exited 空座位
 - **UI**：是
@@ -64,7 +64,7 @@
   - **減少動態**：`@media (prefers-reduced-motion: reduce)` 下 `animation: none`、取消過場，只保留各狀態的靜態姿勢。
   - `DeskCard`：點擊 `exited` 卡片呼叫 `reopen_session`，其他狀態呼叫 `focus_session`；保留 `data-drop-target` 與拒絕原因顯示。
   - 窄版 ↔ 寬版切換時狀態不遺失（狀態在 store，切回寬版直接以目前狀態渲染，不播放過場）。
-- **驗證**：本機：切到別的 App 讓 Baton 隱藏後回來（動畫有暫停）；系統設定開啟「減少動態」確認只剩靜態姿勢。
+- **驗證**：本機：切到別的 App 讓 Cue 隱藏後回來（動畫有暫停）；系統設定開啟「減少動態」確認只剩靜態姿勢。
 
 ### 👤 6-2-H1 M5 實機驗收
 - 依本文件「完成條件（M5 驗收）」逐條操作並回報通過／失敗（可搭配真實 Claude Code／Gemini CLI Hook）。

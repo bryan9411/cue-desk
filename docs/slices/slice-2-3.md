@@ -5,7 +5,7 @@
 
 ## 目標
 
-把後端、程序資訊與歸屬串成每 2 秒一次的探索迴圈，管理節點生命週期（包含 `exited` 與 iTerm2 重啟），並以 `~/.baton/config.json` 持久化工作區與節點身分；透過 Tauri IPC 提供快照與事件。
+把後端、程序資訊與歸屬串成每 2 秒一次的探索迴圈，管理節點生命週期（包含 `exited` 與 iTerm2 重啟），並以 `~/.cue/config.json` 持久化工作區與節點身分；透過 Tauri IPC 提供快照與事件。
 
 ## 必讀
 
@@ -16,7 +16,7 @@
 
 - 前端可呼叫 `get_snapshot` 取得完整狀態，並在每次變動時收到 `sessions-updated`。
 - 關閉 iTerm2 分頁後 ≤ 3 秒節點變為 `exited`；`cd` 進／出工作區 ≤ 3 秒改變歸屬。
-- 設定檔原子寫入，重開 Baton 後工作區與標籤仍在。
+- 設定檔原子寫入，重開 Cue 後工作區與標籤仍在。
 
 ---
 
@@ -26,8 +26,8 @@
 - **UI**：否
 - **預計檔案**（3）：`src-tauri/src/config.rs`、`src-tauri/src/lib.rs`、`src-tauri/Cargo.toml`
 - **實作重點**：
-  - 位置：`~/.baton/config.json`；目錄 `~/.baton` 權限 `0700`。
-  - `BatonConfig`（`serde`，camelCase，所有欄位 `#[serde(default)]`，加 `version: 1`）：
+  - 位置：`~/.cue/config.json`；目錄 `~/.cue` 權限 `0700`。
+  - `CueConfig`（`serde`，camelCase，所有欄位 `#[serde(default)]`，加 `version: 1`）：
     - `workspaces: Vec<Workspace { id, path, name, collapsed, #[serde(flatten)] extra: Map<String, Value> }>`（`extra` 為保留給未來的擴充欄位，讀寫時原樣保留）。`name` 預設為資料夾名稱。
     - `nodes: HashMap<String /*SessionKey 字串*/, NodeMeta { label: Option<String>, last_tty, last_cwd, last_kind }>`。
     - `ignored: Vec<String>`（未歸類的忽略清單，以 SessionKey 字串記錄）。
@@ -57,7 +57,7 @@
 - **UI**：否
 - **預計檔案**（4）：`src-tauri/src/discovery.rs`、`src-tauri/src/commands.rs`、`src-tauri/src/state.rs`、`src-tauri/src/lib.rs`
 - **實作重點**：
-  - `state.rs`：`AppState { config: Mutex<BatonConfig>, registry: Mutex<Registry>, backend: RwLock<Arc<dyn TerminalBackend>> }`，以 `app.manage()` 註冊。
+  - `state.rs`：`AppState { config: Mutex<CueConfig>, registry: Mutex<Registry>, backend: RwLock<Arc<dyn TerminalBackend>> }`，以 `app.manage()` 註冊。
   - `discovery.rs`：tokio 背景任務，`interval(2s)`（`MissedTickBehavior::Skip`）。每輪：`backend.is_running()` 為 false 時跳過終端機探索（但仍把先前存活的節點標為 `Exited`）；否則在 `spawn_blocking` 中執行 `discover()` → 一次 `ps` → 批次 cwd → `registry.merge`。快照有變動才 `emit("sessions-updated", snapshot)`。
   - 提供 `trigger_discovery()`（之後建立／關閉／Hook 後可立即重新探索）。
   - `commands.rs`：
@@ -65,6 +65,6 @@
     - `focus_session(id)`：呼叫 `backend.focus`；`exited` 節點回傳錯誤。
     - `add_workspace(path)`：驗證為資料夾、realpath、去重，寫入設定並立即重新探索。
     - `set_workspace_collapsed(id, collapsed)`。
-    - 錯誤以 `BatonError` 序列化回前端。
+    - 錯誤以 `CueError` 序列化回前端。
   - `terminal_backend` 設定在啟動時套用（M1 驗收切換 Terminal.app 時直接編輯 `config.json` 後重開；UI 切換在 4-3-02）。
 - **驗證**：`cargo test`、`cargo clippy`；`npm run tauri dev` 時以 Rust 端 debug log 印出每輪快照摘要（節點數、各自歸屬與狀態），手動開關 iTerm2 分頁、`cd` 進出工作區確認變化（前端畫面在 2-4 才有）。

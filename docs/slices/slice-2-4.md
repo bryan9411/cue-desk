@@ -18,8 +18,8 @@
 - 用 npm 安裝與用原生安裝的 `claude` 都能被辨識。
 - 在 iTerm2 關掉分頁後 3 秒內節點變為 `exited`。
 - 未歸類終端機 `cd` 進工作區後 3 秒內自動歸類；再 `cd` 到另一個工作區自動改歸屬；`cd ~` 後退回「未歸類」。
-- iTerm2 未執行時 Baton 不會把它打開。
-- 切換至 Terminal.app 後備模式（編輯 `~/.baton/config.json` 的 `terminalBackend` 為 `"terminal"` 後重開）也能探索與聚焦。
+- iTerm2 未執行時 Cue 不會把它打開。
+- 切換至 Terminal.app 後備模式（編輯 `~/.cue/config.json` 的 `terminalBackend` 為 `"terminal"` 後重開）也能探索與聚焦。
 - `npm run verify` 通過。
 
 ---
@@ -28,12 +28,12 @@
 
 ### 2-4-01 feat: 前端型別、IPC 包裝與 Zustand store
 - **UI**：否
-- **預計檔案**（4）：`src/types.ts`、`src/ipc/api.ts`、`src/ipc/events.ts`、`src/store/useBaton.ts`
+- **預計檔案**（4）：`src/types.ts`、`src/ipc/api.ts`、`src/ipc/events.ts`、`src/store/useCue.ts`
 - **實作重點**：
-  - `types.ts`：對應 Rust 的 `Snapshot`、`SessionNode`、`Workspace`、`Status`（`'idle' | 'running' | 'waiting' | 'done' | 'exited'`）、`SessionKind`、`Capabilities`、`BatonError`。
+  - `types.ts`：對應 Rust 的 `Snapshot`、`SessionNode`、`Workspace`、`Status`（`'idle' | 'running' | 'waiting' | 'done' | 'exited'`）、`SessionKind`、`Capabilities`、`CueError`。
   - `ipc/api.ts`：每個 Rust command 一個具型別的包裝函式（`getSnapshot`、`focusSession`、`addWorkspace`、`setWorkspaceCollapsed`）；之後新增 command 都加在這裡。
   - `ipc/events.ts`：`listen('sessions-updated')` 的訂閱與取消。
-  - `store/useBaton.ts`：`workspaces`、`sessions`（以 id 為 key）、`unclassified`、`backend`、`lastError`。**所有 session 狀態更新只經由 `applySnapshot()` 與（slice-5 起）`applyStatusUpdate()` 兩個函式**。提供 selector：依工作區分組並排序（工作區內依視窗序號、分頁序號）。
+  - `store/useCue.ts`：`workspaces`、`sessions`（以 id 為 key）、`unclassified`、`backend`、`lastError`。**所有 session 狀態更新只經由 `applySnapshot()` 與（slice-5 起）`applyStatusUpdate()` 兩個函式**。提供 selector：依工作區分組並排序（工作區內依視窗序號、分頁序號）。
 - **驗證**：Vitest：`applySnapshot` 分組、排序、未歸類分離；`npm run build`。
 
 ### 2-4-02 feat: 樹狀側邊欄與點擊聚焦

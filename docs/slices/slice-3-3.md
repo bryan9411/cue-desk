@@ -23,7 +23,7 @@
 
 ### 3-3-01 feat: 右鍵選單與節點操作
 - **UI**：是
-- **預計檔案**（7）：`src/components/ContextMenu.tsx`、`src/components/sidebar/WorkspaceNode.tsx`、`src/components/sidebar/SessionNode.tsx`、`src/components/sidebar/UnclassifiedSection.tsx`、`src/components/sidebar/RenameField.tsx`、`src/ipc/api.ts`、`src/store/useBaton.ts`
+- **預計檔案**（7）：`src/components/ContextMenu.tsx`、`src/components/sidebar/WorkspaceNode.tsx`、`src/components/sidebar/SessionNode.tsx`、`src/components/sidebar/UnclassifiedSection.tsx`、`src/components/sidebar/RenameField.tsx`、`src/ipc/api.ts`、`src/store/useCue.ts`
 - **實作重點**：
   - `ContextMenu`：自繪浮動選單（滑鼠位置開啟、方向鍵／Enter／Esc 操作、點外部關閉、`role="menu"`），停用項目以 `aria-disabled` 並顯示原因（例如「終端機後備模式不支援分割」）。只用主題變數。
   - **工作區選單**：新增工作階段（開 3-3-02 的 Modal）、在 Finder 開啟（`opener.revealItemInDir`）、在 iTerm2 開一個 zsh（`create_session` kind=zsh、mode=預設）、移除工作區（以 `plugin-dialog` 的 `ask` 確認，文案註明「不會刪除檔案」）。「只收回此工作區至螢幕 1」於 7-1-05 加入。

@@ -18,7 +18,7 @@
 - 拖檔到 `waiting` 狀態、前景為 `vim` 的節點、或 Terminal.app 後備模式時皆被拒絕並顯示原因。
 - 同目錄開啟 2 個 AI 時顯示防呆提醒與 SVG 警示徽章。
 - `git switch` 後 1 秒內分支徽章更新；monorepo 子資料夾、worktree `.git` 檔、Detached HEAD、事後 `git init` 都顯示正確。
-- 重開 Baton 後工作區與自訂標籤仍在。
+- 重開 Cue 後工作區與自訂標籤仍在。
 - `npm run verify` 通過。
 
 ---
@@ -40,7 +40,7 @@
 
 ### 3-5-02 feat: 拖曳資料夾加入工作區與拖檔到節點
 - **UI**：是
-- **預計檔案**（7）：`src/hooks/useDragDrop.ts`、`src-tauri/src/commands.rs`、`src/components/sidebar/Sidebar.tsx`、`src/components/sidebar/SessionNode.tsx`、`src/components/sidebar/DropHint.tsx`、`src/ipc/api.ts`、`src/store/useBaton.ts`
+- **預計檔案**（7）：`src/hooks/useDragDrop.ts`、`src-tauri/src/commands.rs`、`src/components/sidebar/Sidebar.tsx`、`src/components/sidebar/SessionNode.tsx`、`src/components/sidebar/DropHint.tsx`、`src/ipc/api.ts`、`src/store/useCue.ts`
 - **實作重點**：
   - 使用 Tauri v2 `getCurrentWebview().onDragDropEvent`：`over` 時更新懸停目標、`drop` 時處理、`leave` 時清除。
   - **落點判斷**：事件座標為實體像素，先除以 `window.scaleFactor()` 換成 CSS 像素，再以 `document.elementFromPoint` 找最近的 `[data-drop-target]` 元素（工作區清單區塊為 `workspace-list`，工作階段節點為 `session:<id>`；寬版卡片於 4-2-03 加上同樣屬性）。

@@ -31,11 +31,11 @@
 - **UI**：否
 - **預計檔案**（3）：`src-tauri/src/osascript.rs`、`src-tauri/src/error.rs`、`src-tauri/src/lib.rs`
 - **實作重點**：
-  - `run(script: &'static str, args: &[&str]) -> Result<String, BatonError>`：以 `osascript - <arg1> <arg2> …` 執行，**腳本原文從 stdin 寫入**，變動資料只放在 argv。腳本參數型別為 `&'static str`，從型別上杜絕把執行期資料拼進腳本。
+  - `run(script: &'static str, args: &[&str]) -> Result<String, CueError>`：以 `osascript - <arg1> <arg2> …` 執行，**腳本原文從 stdin 寫入**，變動資料只放在 argv。腳本參數型別為 `&'static str`，從型別上杜絕把執行期資料拼進腳本。
   - 逾時（預設 5 秒），逾時就 kill 子程序並回傳錯誤。
   - `parse_records(output) -> Vec<Vec<String>>`：以 `\x1e` 切紀錄、`\x1f` 切欄位，去掉結尾換行；空輸出回傳空陣列。
-  - 錯誤分類：stderr 含 `-1743`（errAEEventNotPermitted，使用者拒絕自動化權限）→ `BatonError::AutomationDenied`；`-600`／`-1728` 等 App 未執行或找不到物件 → 對應錯誤；其他 → `BatonError::Script(stderr 摘要)`。
-  - `BatonError` 實作 `serde::Serialize`（給前端顯示的簡短訊息），**不得含任何機密**。
+  - 錯誤分類：stderr 含 `-1743`（errAEEventNotPermitted，使用者拒絕自動化權限）→ `CueError::AutomationDenied`；`-600`／`-1728` 等 App 未執行或找不到物件 → 對應錯誤；其他 → `CueError::Script(stderr 摘要)`。
+  - `CueError` 實作 `serde::Serialize`（給前端顯示的簡短訊息），**不得含任何機密**。
   - 單元測試：`parse_records` 的空輸出、單筆、多筆、欄位含空白與中文。整合測試（`#[ignore]`）：執行 `on run argv` 回傳 `item 1 of argv & (ASCII character 31) & item 2 of argv`，驗證含 `'`、`"`、`$(…)`、換行的參數原樣往返。
 - **驗證**：`cargo test`；`cargo test -- --ignored osascript` 在本機通過。
 
@@ -47,7 +47,7 @@
   - **iTerm2**：逐一走訪 windows → tabs → sessions，每個 session 輸出一筆：`window id`、視窗序號、`bounds`（四個數字）、分頁序號、`unique ID`、`tty`、`name`。
   - **Terminal.app**：逐一走訪 windows → tabs，每個 tab 輸出：`window id`、視窗序號、`bounds`、分頁序號、`tty`、`custom title`。
   - 欄位以 `(ASCII character 31)`、紀錄以 `(ASCII character 30)` 串接。
-  - `probe_discover.rs`：呼叫 `baton_lib::osascript` 執行兩支腳本並以表格印出，同時記錄執行耗時（評估每 2 秒輪詢的成本）。為了讓 example 能用，`lib.rs` 需 `pub mod osascript;` 並以 `pub(crate)` 以外的方式公開腳本常數（例如 `pub mod terminal { pub mod scripts; }` 先放常數）。
+  - `probe_discover.rs`：呼叫 `cue_lib::osascript` 執行兩支腳本並以表格印出，同時記錄執行耗時（評估每 2 秒輪詢的成本）。為了讓 example 能用，`lib.rs` 需 `pub mod osascript;` 並以 `pub(crate)` 以外的方式公開腳本常數（例如 `pub mod terminal { pub mod scripts; }` 先放常數）。
   - 記錄觀察：`tty` 的格式（`/dev/ttys003` 或 `ttys003`）、視窗 ID 是否穩定、分割窗格是否各自一筆、最小化視窗與全螢幕視窗的 bounds、iTerm2 未執行時是否被啟動。
 - **驗證**：`cargo run --manifest-path src-tauri/Cargo.toml --example probe_discover` 編譯成功並在本機輸出；實機情境由 👤 1-2-H1 回報。
 
@@ -66,12 +66,12 @@
 - **UI**：否
 - **預計檔案**（1）：`docs/design/notes-research.md`
 - **實作重點**：查閱官方文件、changelog、原始碼授權（每項附來源網址與查閱日期），回答：
-  1. **`tauri-plugin-notification`**：哪個版本起在 **macOS 桌面**支援點擊通知回報（JS `onAction` 或 Rust `Notification::on_action`）？若尚無版本支援，列出替代方案（例如以 `objc2-user-notifications` 自行實作 `UNUserNotificationCenterDelegate`，或通知點擊只帶起 Baton 再由 Baton 聚焦最後一則通知的工作階段）。
+  1. **`tauri-plugin-notification`**：哪個版本起在 **macOS 桌面**支援點擊通知回報（JS `onAction` 或 Rust `Notification::on_action`）？若尚無版本支援，列出替代方案（例如以 `objc2-user-notifications` 自行實作 `UNUserNotificationCenterDelegate`，或通知點擊只帶起 Cue 再由 Cue 聚焦最後一則通知的工作階段）。
   2. **Gemini CLI Hook**：啟用 Hook 的設定鍵、`settings.json` 結構、事件名稱（是否為 `BeforeAgent`／`Notification`／`AfterAgent`）、Hook 收到的 stdin JSON 欄位（`session_id`、`transcript_path`）、是否要求 stdout 為 JSON。
   3. **Claude Code Hook**：`UserPromptSubmit`／`Notification`／`Stop` 的設定格式；`Notification` 事件的 matcher（例如 `permission_prompt` 與 `idle_prompt` 的區分），以免閒置提醒誤判為 `waiting`。
   4. **iTerm2 Python API 協定**：
      - `api.proto` 的授權（iTerm2 主程式為 GPL，需確認該檔是否另有授權），能否放進 MIT 專案。
-     - 連線方式：socket 路徑、WebSocket 子協定、必要的 HTTP 標頭（cookie、key、library version 等）、`request cookie and key for app named "Baton"` 的 AppleScript 用法與回傳格式。
+     - 連線方式：socket 路徑、WebSocket 子協定、必要的 HTTP 標頭（cookie、key、library version 等）、`request cookie and key for app named "Cue"` 的 AppleScript 用法與回傳格式。
      - 完成 M6 需要的最小訊息集合：列出工作階段／視窗／分頁、訂閱新工作階段／工作階段結束／版面變動通知、**把單一分頁移到新視窗**、**把分頁併入指定視窗**（例如 `ReorderTabsRequest`、`InvokeFunctionRequest` 或其他），各自的欄位編號。
   5. **macOS 原生 API 的 Rust 綁定**：`objc2`、`objc2-app-kit`、`objc2-foundation` 的授權與版本；`NSWorkspace URLForApplicationWithBundleIdentifier`、`NSRunningApplication runningApplicationsWithBundleIdentifier`、`NSScreen frame/visibleFrame`、`NSColor` 色彩空間轉換的對應 API。
   6. **其他依賴授權**：`window-vibrancy`、`notify`、`plist`、`tokio-tungstenite`、`prost`、`zeroize`、`libproc`（若採用）。

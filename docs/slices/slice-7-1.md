@@ -33,7 +33,7 @@
 - **實作重點**：
   - `screens() -> Vec<ScreenInfo { index, is_primary, frame_as, visible_as, scale }>`（皆為 AppleScript 座標系的點）；主螢幕 index 0（＝「螢幕 1」），其他依 x 座標排序。NSScreen 須在主執行緒呼叫（以 `run_on_main_thread` 取得）。
   - 純函式 `cocoa_to_applescript(rect, primary_height)`、`tauri_physical_to_points(pos, size, scale)`，有單元測試。
-  - `baton_window_rect_as()`：取 Baton 主視窗的外框（實體像素 ÷ scaleFactor → 點），判斷所在螢幕。
+  - `cue_window_rect_as()`：取 Cue 主視窗的外框（實體像素 ÷ scaleFactor → 點），判斷所在螢幕。
   - 監聽螢幕變化（`NSApplicationDidChangeScreenParametersNotification` 或每次調度時重新查詢），emit `screens-changed`（螢幕數量）。
   - `get_screens` command（前端用來決定是否顯示雙螢幕選項）。
 - **驗證**：單元測試：Retina 主螢幕（1512×982 點、scale 2）＋外接 1920×1080（scale 1，位於右側／上方／左側）三種排列的轉換結果；本機 `#[ignore]` 測試印出實際螢幕資訊。
@@ -42,18 +42,18 @@
 - **UI**：否
 - **預計檔案**（6）：`src-tauri/src/arrange.rs`、`src-tauri/src/terminal/scripts/iterm2_set_bounds.applescript`、`src-tauri/src/terminal/scripts/terminal_app_set_bounds.applescript`、`src-tauri/src/terminal/iterm2.rs`、`src-tauri/src/terminal/terminal_app.rs`、`src-tauri/src/commands.rs`
 - **實作重點**：
-  - `arrange.rs` 純函式 `beside_rect(baton, visible) -> Bounds`：left＝Baton 右緣、top＝Baton 上緣、right＝該螢幕 `visibleFrame` 右緣、bottom＝Baton 下緣（與 Baton 同高），並夾限在 `visibleFrame` 內。
+  - `arrange.rs` 純函式 `beside_rect(cue_window, visible) -> Bounds`：left＝Cue 右緣、top＝Cue 上緣、right＝該螢幕 `visibleFrame` 右緣、bottom＝Cue 下緣（與 Cue 同高），並夾限在 `visibleFrame` 內。
   - set bounds 腳本：argv 為視窗 ID（空字串＝最前視窗）與 `left top right bottom` 四個數字字串（腳本內轉為 integer）；`{left, top, right, bottom}` 為 AppleScript 座標。
-  - `arrange_beside` 實作：iTerm2／Terminal.app 將**最前面的視窗**移到 Baton 右側。
+  - `arrange_beside` 實作：iTerm2／Terminal.app 將**最前面的視窗**移到 Cue 右側。
   - `arrange_beside_terminal` command。
-- **驗證**：單元測試（夾限、Baton 在外接螢幕）；本機在兩個螢幕上各測一次。
+- **驗證**：單元測試（夾限、Cue 在外接螢幕）；本機在兩個螢幕上各測一次。
 
 ### 7-1-03 feat: 送到螢幕 2 與收回螢幕 1
 - **UI**：否
 - **預計檔案**（4）：`src-tauri/src/arrange.rs`、`src-tauri/src/terminal/iterm2.rs`、`src-tauri/src/terminal/terminal_app.rs`、`src-tauri/src/commands.rs`
 - **實作重點**：
   - 「送到螢幕 2 對照」：把該工作階段所在視窗**滿版**放到副螢幕（第一個非主螢幕）的 `visibleFrame`；其餘視窗保留原位、不移動。
-  - 「收回螢幕 1」：把該視窗放回主螢幕的並排位置（同 `beside_rect`；Baton 不在主螢幕時用主螢幕 `visibleFrame` 右側 2/3）。
+  - 「收回螢幕 1」：把該視窗放回主螢幕的並排位置（同 `beside_rect`；Cue 不在主螢幕時用主螢幕 `visibleFrame` 右側 2/3）。
   - 僅一個螢幕時回傳錯誤「未偵測到第二個螢幕」。
   - 回傳 `{ movedWithOtherTabs: bool }`：該視窗還有其他分頁（依 registry 判斷）時為 true，前端提示「將連同同視窗的其他分頁一起移動」（未啟用 Socket 引擎時）。
   - `send_to_screen2(sessionId)`、`return_to_screen1(sessionId)` commands；完成後聚焦該工作階段。
@@ -71,7 +71,7 @@
 
 ### 7-1-05 feat: 雙螢幕與整理操作的前端入口
 - **UI**：是
-- **預計檔案**（8）：`src/components/sidebar/BottomBar.tsx`、`src/components/sidebar/SessionNode.tsx`、`src/components/sidebar/WorkspaceNode.tsx`、`src/components/newsroom/DeskCard.tsx`、`src/commands/registry.ts`、`src/ipc/api.ts`、`src/ipc/events.ts`、`src/store/useBaton.ts`
+- **預計檔案**（8）：`src/components/sidebar/BottomBar.tsx`、`src/components/sidebar/SessionNode.tsx`、`src/components/sidebar/WorkspaceNode.tsx`、`src/components/newsroom/DeskCard.tsx`、`src/commands/registry.ts`、`src/ipc/api.ts`、`src/ipc/events.ts`、`src/store/useCue.ts`
 - **實作重點**：
   - 底部「並排終端」「分頁整理」啟用。
   - 工作階段右鍵選單加「送到螢幕 2 對照」「收回螢幕 1」（僅偵測到多螢幕時顯示）；節點與卡片懸停時顯示細線 `Monitor` 快捷鈕。若 store 判斷該視窗還有其他分頁，執行前以 `ask` 確認：「將連同同視窗的其他分頁一起移動，要繼續嗎？」。

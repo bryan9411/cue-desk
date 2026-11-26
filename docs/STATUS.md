@@ -1,4 +1,4 @@
-# Baton 開發進度
+# Cue 開發進度
 
 ## 使用方式
 
@@ -15,7 +15,7 @@
 | slice-2 | M1 探索與認領 | 終端機後端、程序解析、cwd 自動歸屬、基礎側邊欄 | 否（可自用：唯讀檢視與聚焦） |
 | slice-3 | M2 建立、管理、防呆與拖檔派工 | 建立／補切／命名／關閉、Git 分支、拖放 | 否（可自用） |
 | slice-4 | M3 外觀、面板與效率 | 主題引擎、16 套主題、偏好設定視窗、雙型態外殼、`Cmd+P` | 否（可自用） |
-| slice-5 | M4 Hook 與通知 | Unix socket Hook、`baton-notify`、提示音、通知、Dock 徽章 | 否（功能已完整可自用，尚無發佈管道） |
+| slice-5 | M4 Hook 與通知 | Unix socket Hook、`cue-notify`、提示音、通知、Dock 徽章 | 否（功能已完整可自用，尚無發佈管道） |
 | slice-6 | M5 雜誌編輯室角色 | 5 種狀態 SVG 角色與動畫 | 否 |
 | slice-7 | M6 雙螢幕與 iTerm2 Socket 精準分頁 | 螢幕座標、並排終端、送到螢幕 2、Socket 引擎 | 否 |
 | slice-8 | M7 發佈 | `install.sh`、`uninstall.sh`、Release workflow、README | **是**（🚀 v0.1.0） |
@@ -118,7 +118,7 @@
 
 - [ ] **slice-5-1 Hook 通道** → `docs/slices/slice-5-1.md`
   - [ ] 5-1-01 feat: Unix Domain Socket Hook 伺服器
-  - [ ] 5-1-02 feat: baton-notify 輔助腳本
+  - [ ] 5-1-02 feat: cue-notify 輔助腳本
   - [ ] 5-1-03 feat: 前端狀態燈號連動
 - [ ] **slice-5-2 提示與通知** → `docs/slices/slice-5-2.md`
   - [ ] 5-2-01 feat: Web Audio 雙頻提示音
@@ -157,7 +157,7 @@
 ## slice-8 發佈（M7）
 
 - [ ] **slice-8-1 安裝與發佈腳本** → `docs/slices/slice-8-1.md`
-  - [ ] 👤 8-1-H1 提供 GitHub OWNER／REPO 與最終 Bundle ID
+  - [ ] 👤 8-1-H1 確認 GitHub repo 與最終 Bundle ID
   - [ ] 8-1-01 feat: install.sh 一行安裝
   - [ ] 8-1-02 feat: uninstall.sh
   - [ ] 8-1-03 ci: GitHub Actions 發佈流程
@@ -168,6 +168,6 @@
 
 ### 🚀 里程碑：v0.1.0 公開發佈
 
-- **完成 8-2-H1 即可上線**：GitHub Release 提供 `Baton-macos-universal.zip` 與 `.sha256`，README 的一行指令可安裝與更新。
+- **完成 8-2-H1 即可上線**：GitHub Release 提供 `Cue-macos-universal.zip` 與 `.sha256`，README 的一行指令可安裝與更新。
 - **包含**：M1～M7 全部功能——工作區與工作階段認領、建立／補切／命名／關閉、拖檔派工、Git 分支徽章、16 套內建主題與 `.itermcolors` 匯入、偏好設定視窗、`Cmd+P`、Hook 狀態燈號／提示音／通知／Dock 徽章、雜誌編輯室角色動畫、雙螢幕調度、iTerm2 Socket 精準分頁（選配）。
 - **不包含**：Apple Developer ID 簽章與公證（每次更新 macOS 可能重新詢問自動化授權）、自動更新機制、Ghostty／WezTerm 等其他終端機後端、`cliSessionId`／`transcriptPath` 的實際應用、Git Worktree 管理 UI。

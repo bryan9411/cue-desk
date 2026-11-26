@@ -24,7 +24,7 @@
 - **UI**：否
 - **預計檔案**（2）：`src-tauri/src/shell.rs`、`src-tauri/src/lib.rs`
 - **實作重點**：
-  - `quote(s: &str) -> Result<String, BatonError>`：以單引號包住，內部 `'` 轉為 `'\''`；字串含換行（`\n`、`\r`）或任何其他控制字元（`char::is_control`，含 `\0`、`\x1b`、`\x7f`）時回傳 `BatonError::UnsafePath`。
+  - `quote(s: &str) -> Result<String, CueError>`：以單引號包住，內部 `'` 轉為 `'\''`；字串含換行（`\n`、`\r`）或任何其他控制字元（`char::is_control`，含 `\0`、`\x1b`、`\x7f`）時回傳 `CueError::UnsafePath`。
   - `enum AiCommand { Claude, Gemini }`，`as_str()` 只回傳 `"claude"`／`"gemini"`。**不接受任意字串，不提供附加參數的介面**；`--dangerously-skip-permissions`、`--yolo` 等永遠不會出現在程式中。
   - `launch_command(kind: SessionKindToCreate, workspace: &Path) -> Result<String>`：`Claude` → `cd -- '<路徑>' && claude`；`Gemini` → `cd -- '<路徑>' && gemini`；`Zsh` → `cd -- '<路徑>'`。
   - 這是送入終端機文字的**唯一建構點**；其他模組不得自行組字串。

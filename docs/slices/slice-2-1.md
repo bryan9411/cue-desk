@@ -36,7 +36,7 @@
   - `terminal/mod.rs`：
     - `Capabilities { split, new_tab, type_text_no_enter, rename, close_pane, precise_tabs }`。
     - `OpenMode`：`NewWindow`｜`NewTab`｜`AiTopZshBottom`｜`AiLeftZshRight`；`SplitDirection`：`Right`｜`Below`。
-    - `trait TerminalBackend: Send + Sync`（同步方法，由呼叫端以 `spawn_blocking` 執行）：`id()`、`capabilities()`、`is_running()`、`discover()`、`focus(&SessionKey)`、`create(&CreateSpec)`、`split_zsh(&SessionKey, SplitDirection, cwd)`、`rename(&SessionKey, &str)`、`close(&SessionKey)`、`type_text_no_enter(&SessionKey, &str)`、`arrange_beside(Bounds)`、`move_to_screen(&SessionKey, usize)`、`gather_windows(&[WindowId], Bounds)`。除 `id`／`capabilities`／`is_running`／`discover`／`focus` 外，預設實作回傳 `Err(BatonError::Unsupported)`。
+    - `trait TerminalBackend: Send + Sync`（同步方法，由呼叫端以 `spawn_blocking` 執行）：`id()`、`capabilities()`、`is_running()`、`discover()`、`focus(&SessionKey)`、`create(&CreateSpec)`、`split_zsh(&SessionKey, SplitDirection, cwd)`、`rename(&SessionKey, &str)`、`close(&SessionKey)`、`type_text_no_enter(&SessionKey, &str)`、`arrange_beside(Bounds)`、`move_to_screen(&SessionKey, usize)`、`gather_windows(&[WindowId], Bounds)`。除 `id`／`capabilities`／`is_running`／`discover`／`focus` 外，預設實作回傳 `Err(CueError::Unsupported)`。
   - 上層只能依賴 trait，之後新增 Ghostty／WezTerm 不需改上層。
 - **驗證**：`cargo check`、`cargo clippy`；序列化測試確認 `Status::Waiting` → `"waiting"`、`SessionKey` 字串形式。
 

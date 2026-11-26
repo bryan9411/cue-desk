@@ -1,6 +1,6 @@
-# Baton
+# Cue
 
-Baton（指揮棒）是 macOS 原生的多工作區 AI CLI 指揮中心：Tauri v2（Rust）+ React + TypeScript + Tailwind CSS。本身不內嵌終端機，負責管理本機工作區、認領與調度 iTerm2（後備 Terminal.app）中的 `claude`／`gemini`／`zsh` 工作階段，並以 Unix Domain Socket Hook 驅動狀態燈號與通知。授權 MIT。
+Cue 是 macOS 原生的多工作區 AI CLI 指揮中心：Tauri v2（Rust）+ React + TypeScript + Tailwind CSS。本身不內嵌終端機，負責管理本機工作區、認領與調度 iTerm2（後備 Terminal.app）中的 `claude`／`gemini`／`zsh` 工作階段，並以 Unix Domain Socket Hook 驅動狀態燈號與通知。授權 MIT。
 
 ## 文件索引
 
@@ -82,18 +82,18 @@ feat: 解析 ps 輸出並判斷前景程式與類型
 - 指令名稱只能來自程式內固定列舉（`claude`、`gemini`）。**嚴禁加入跳過權限確認的參數**（`--dangerously-skip-permissions`、`--yolo` 等）。
 - 拖檔派工**絕不送出 Enter**。
 - 探索（discover）只在終端機已執行時進行，**不得為了輪詢而把 iTerm2 開起來**；只有使用者主動建立或聚焦時才啟動。
-- Baton 結束時**不關閉任何終端機工作階段**。
+- Cue 結束時**不關閉任何終端機工作階段**。
 
 **狀態與歸屬**
 - 工作階段歸屬**只依前景程式 `cwd`**（realpath 後最長前綴），不提供任何手動歸屬（拖曳、選單「移到其他工作區」都不做）。
 - 狀態只有 `idle`｜`running`｜`waiting`｜`done`｜`exited`。`running`／`waiting`／`done` **只由 Hook 驅動**；**嚴禁解析終端機輸出或以閒置計時推測 AI 狀態**。聚焦時 `done` 回到 `idle`。
 
 **資安**
-- **零網路暴露**：不得啟動任何 HTTP／WebSocket 伺服器或監聽 TCP/UDP Port。Hook 只走 `~/.baton/run/baton.sock`（Baton 為伺服器端）；iTerm2 進階連線只以用戶端身分連 iTerm2 的本機 socket。
+- **零網路暴露**：不得啟動任何 HTTP／WebSocket 伺服器或監聽 TCP/UDP Port。Hook 只走 `~/.cue/run/cue.sock`（Cue 為伺服器端）；iTerm2 進階連線只以用戶端身分連 iTerm2 的本機 socket。
 - iTerm2 API 的 **Cookie 與 Key 只存在記憶體**，不得寫入設定檔、log、錯誤訊息或前端狀態。
 - 前端**禁止 `dangerouslySetInnerHTML`**；工作區名稱、標籤、路徑、主題名稱一律當純文字渲染。
 - CSP 與 capabilities 維持最小權限（見 1-1-03），不得放寬；禁止載入任何遠端腳本或字型。
-- 設定檔 `~/.baton/config.json` 一律**原子寫入**（寫暫存檔再 rename）。
+- 設定檔 `~/.cue/config.json` 一律**原子寫入**（寫暫存檔再 rename）。
 
 **介面**
 - 全介面使用極簡細線內嵌 SVG 圖示，**不使用任何 emoji**（包含警示徽章）。
@@ -101,7 +101,7 @@ feat: 解析 ps 輸出並判斷前景程式與類型
 - 主題名稱不得使用「Claude」或其他商標名稱。
 - 介面文案使用台灣繁體中文。
 
-**Hook 腳本 `baton-notify`**
+**Hook 腳本 `cue-notify`**
 - stdout 完全不輸出；任何錯誤都靜默 `exit 0`；socket 不存在直接 `exit 0`；送出時 `nc -U -w 1`（1 秒逾時）。
 
 ---
@@ -110,7 +110,7 @@ feat: 解析 ps 輸出並判斷前景程式與類型
 
 - 套件管理：npm；前端建置 Vite；測試：前端 Vitest、Rust `cargo test`。
 - Rust：tokio、serde／serde_json、notify、plist、window-vibrancy、objc2 系列（NSScreen、NSWorkspace 等）；M6 加入 tokio-tungstenite、prost。
-- 前端狀態集中於單一 Zustand store（`src/store/useBaton.ts`），所有 Session 狀態更新經由統一函式。
+- 前端狀態集中於單一 Zustand store（`src/store/useCue.ts`），所有 Session 狀態更新經由統一函式。
 - Rust 端是工作階段狀態的單一真相，前端透過 Tauri IPC（`invoke`、`emit`）同步。
 - `TerminalBackend` trait 是唯一的終端機介面，上層只依賴 trait 與 `capabilities()`。
 - 程式碼註解可用繁體中文；識別字用英文。
@@ -129,14 +129,14 @@ src-tauri/
     attribution.rs          # 最長前綴歸屬
     registry.rs             # 節點合併與生命週期
     discovery.rs            # 探索迴圈
-    config.rs               # ~/.baton/config.json
+    config.rs               # ~/.cue/config.json
     commands.rs             # Tauri commands
     shell.rs, layout.rs, dispatch.rs
     git/                    # Git 目錄解析與監聽
-    hook/                   # Unix socket 伺服器、baton-notify 安裝
+    hook/                   # Unix socket 伺服器、cue-notify 安裝
     screen.rs, arrange.rs   # 螢幕座標與視窗調度
     iterm2_api/             # iTerm2 Socket 引擎（M6）
-  resources/baton-notify.sh
+  resources/cue-notify.sh
   examples/                 # 技術探針
 src/
   main.tsx, App.tsx, index.css

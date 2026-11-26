@@ -153,7 +153,7 @@ SYS_MONO  = ui-monospace, "SF Mono", Menlo, monospace
 
 ### 4-1-04 feat: 主題服務：套用、預覽與提交
 - **UI**：否
-- **預計檔案**（7）：`src/themes/engine.ts`、`src/themes/registry.ts`、`src/store/useBaton.ts`、`src-tauri/src/config.rs`、`src-tauri/src/commands.rs`、`src/index.css`、`src-tauri/tauri.conf.json`
+- **預計檔案**（7）：`src/themes/engine.ts`、`src/themes/registry.ts`、`src/store/useCue.ts`、`src-tauri/src/config.rs`、`src-tauri/src/commands.rs`、`src/index.css`、`src-tauri/tauri.conf.json`
 - **實作重點**：
   - `registry.ts`：`allThemes()` 依「風格主題／經典配色／我的主題」分組（我的主題在 4-4-02 接上）。
   - `engine.ts`：

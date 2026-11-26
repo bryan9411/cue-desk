@@ -29,8 +29,8 @@
   - `LICENSE`：MIT 全文（著作權人依 git 使用者名稱或使用者指定）。
   - `README.md`（保留 5-2-04 的「Hook 設定」段落與其錨點）：
     - 產品介紹（不內嵌終端機、適用任何本機資料夾、0 額外 AI Token）。
-    - 一行安裝：`curl -fsSL https://raw.githubusercontent.com/<OWNER>/<REPO>/main/install.sh | bash`；指定版本 `BATON_VERSION=vX.Y.Z`；重跑即更新；解除安裝方式。
-    - 首次使用會出現「Baton 想要控制 iTerm2」的授權。
+    - 一行安裝：`curl -fsSL https://raw.githubusercontent.com/<OWNER>/<REPO>/main/install.sh | bash`；指定版本 `CUE_VERSION=vX.Y.Z`；重跑即更新；解除安裝方式。
+    - 首次使用會出現「Cue 想要控制 iTerm2」的授權。
     - 因為沒有 Developer ID 簽章，每次更新後 macOS 可能再次詢問這項授權。
     - 若從瀏覽器手動下載 zip 開啟會被 Gatekeeper 阻擋，請使用一行指令安裝。
     - 選配：於 iTerm2 勾選 `Settings › General › Magic › Enable Python API` 可解鎖「從混裝視窗精準抽分頁／一鍵按工作區分家」（無須安裝 Python 或開啟輔助使用權限；首次連線 iTerm2 可能詢問一次）。
@@ -54,6 +54,6 @@
 
 ### 👤 8-2-H1 推送 v0.1.0 tag 並在乾淨帳號驗收
 - 合併到 `main` 後，更新三處版本號為 `0.1.0`，推送 tag：`git tag v0.1.0 && git push origin v0.1.0`（Claude 不會自行 push）。
-- 確認 GitHub Actions 成功、Release 有 `Baton-macos-universal.zip` 與 `.sha256`。
+- 確認 GitHub Actions 成功、Release 有 `Cue-macos-universal.zip` 與 `.sha256`。
 - 在 macOS 新增一個乾淨的使用者帳號，執行 README 的一行安裝指令，確認可啟動；再執行一次確認更新流程正常。
 - 回報結果給 Claude，記錄在本文件末尾「驗收紀錄」。完成即達成 🚀 v0.1.0 里程碑。

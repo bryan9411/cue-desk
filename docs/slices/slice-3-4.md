@@ -47,7 +47,7 @@
 
 ### 3-4-03 feat: 側邊欄分支徽章
 - **UI**：是
-- **預計檔案**（5）：`src/components/sidebar/BranchBadge.tsx`、`src/components/sidebar/WorkspaceNode.tsx`、`src/ipc/events.ts`、`src/store/useBaton.ts`、`src/index.css`
+- **預計檔案**（5）：`src/components/sidebar/BranchBadge.tsx`、`src/components/sidebar/WorkspaceNode.tsx`、`src/ipc/events.ts`、`src/store/useCue.ts`、`src/index.css`
 - **實作重點**：
   - `BranchBadge`：細線分支 SVG 圖示＋分支名（`--font-mono`、`--text-muted`、`--radius-sm` 外框）；Detached 時顯示 `HEAD abc1234`；非 Git 顯示「非 Git」。過長分支名以省略號截斷並以 `title` 顯示全名。
   - 不提供任何 Worktree 巢狀管理 UI。
