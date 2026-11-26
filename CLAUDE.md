@@ -47,9 +47,13 @@ Baton（指揮棒）是 macOS 原生的多工作區 AI CLI 指揮中心：Tauri 
 ## Commit 規範
 
 - 主旨與內文使用**台灣繁體中文**；前綴使用英文 Conventional Commits（`feat`、`fix`、`chore`、`docs`、`test`、`refactor`、`ci`、`spike`）。
-- 內文最後一行註明切片編號。
+- **只描述這次實際做了什麼**。主旨與內文都**不得出現任何開發計畫用語**：
+  - 不寫切片或 Commit 編號（例如 `slice-2-1`、`2-1-02`、`M1`、`里程碑`）。
+  - 不寫進度描述（例如「完成 slice 前半段」、「切片第一部分」、「階段 2 之一」、「接續上一個 Commit」）。
+  - 只做了某階段的一部分時，照樣只寫做了哪些功能或變更，不說明它在計畫中的位置。
 - **不加任何 AI 署名**（不加 `Co-Authored-By`、「Generated with」等字樣）。
 - 一個 Commit 只做一件事。
+- 編號只用在 `docs/STATUS.md` 與切片文件中，不進入 git 歷史。
 
 範例：
 
@@ -59,9 +63,9 @@ feat: 解析 ps 輸出並判斷前景程式與類型
 - 以 pgid == tpgid 找出各 tty 的前景程式群組
 - 辨識原生與 npm（node …/claude）兩種 claude 執行形式
 - 加入 ps 範例輸出的單元測試
-
-切片：2-1-02
 ```
+
+錯誤範例（不要這樣寫）：`feat(slice-2-1): …`、內文出現「切片：2-1-02」、「完成 slice-3 前半段」。
 
 ---
 

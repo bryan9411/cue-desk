@@ -31,7 +31,7 @@
   3. 其他調查中標示「待決定」的項目。
 - 完成後告訴 Claude 每一項的選擇。
 
-### 1-3-01 docs: 技術決策紀錄 001 並更新後續切片
+### 1-3-01 docs: 加入技術決策紀錄並依結論更新實作說明
 - **UI**：否
 - **預計檔案**（7）：`docs/design/001-tech-decisions.md`、`docs/design/notes-probe.md`、`docs/slices/slice-2-1.md`、`docs/slices/slice-2-2.md`、`docs/slices/slice-5-2.md`、`docs/slices/slice-7-2.md`、`docs/slices/slice-5-1.md`
 - **實作重點**：決策紀錄至少包含：
