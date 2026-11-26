@@ -81,10 +81,10 @@
   - [x] 3-4-02 feat: 以 notify 監聽分支變化
   - [x] 3-4-03a feat: 前端同步分支狀態
   - [x] 3-4-03b feat: 側邊欄分支徽章
-- [ ] **slice-3-5 拖放與派工** → `docs/slices/slice-3-5.md`
+- [x] **slice-3-5 拖放與派工** → `docs/slices/slice-3-5.md`
   - [x] 3-5-01 feat: 拖檔派工規則與不送 Enter 的文字輸入
   - [x] 3-5-02 feat: 拖曳資料夾加入工作區與拖檔到節點
-  - [ ] 👤 3-5-H1 M2 實機驗收
+  - [x] 👤 3-5-H1 M2 實機驗收
 
 ## slice-4 外觀、面板與效率（M3）
 
