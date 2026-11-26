@@ -1,16 +1,17 @@
 // Rust 端事件的訂閱與取消。
-import { listen } from "@tauri-apps/api/event";
-import type { BranchChange, CueError, Snapshot } from "../types";
-import { getSnapshot, toCueError } from "./api";
+import { listen } from "@tauri-apps/api/event"
+import type { BranchChange, CueError, Snapshot } from "../types"
+import { getSnapshot, toCueError } from "./api"
+import { syncUnlisten } from "./unlisten"
 
 /** 快照有變動時 Rust 送出的事件名稱，內容為完整快照。 */
-export const SESSIONS_UPDATED = "sessions-updated";
+export const SESSIONS_UPDATED = "sessions-updated"
 /** 工作區分支變動時 Rust 送出的事件名稱，內容只有該工作區的分支。 */
-export const GIT_BRANCH_CHANGED = "git-branch-changed";
+export const GIT_BRANCH_CHANGED = "git-branch-changed"
 
 /** 訂閱 `sessions-updated`；回傳的函式可在任何時候呼叫以取消（含訂閱尚未完成時）。 */
 export function onSessionsUpdated(handler: (snapshot: Snapshot) => void): () => void {
-  return subscribe(SESSIONS_UPDATED, handler);
+  return subscribe(SESSIONS_UPDATED, handler)
 }
 
 /**
@@ -18,26 +19,23 @@ export function onSessionsUpdated(handler: (snapshot: Snapshot) => void): () => 
  * 與快照的先後順序可能交錯，被較舊的快照蓋掉時，Rust 下一次送出的快照會帶回正確分支。
  */
 export function onBranchChanged(handler: (change: BranchChange) => void): () => void {
-  return subscribe(GIT_BRANCH_CHANGED, handler);
+  return subscribe(GIT_BRANCH_CHANGED, handler)
 }
 
+/** 訂閱失敗時沒有可做的補救；初始快照仍會載入。 */
+function ignoreSubscribeError() {}
+
 function subscribe<T>(name: string, handler: (payload: T) => void): () => void {
-  let cancelled = false;
-  let unlisten: (() => void) | undefined;
-  listen<T>(name, (event) => {
-    if (!cancelled) handler(event.payload);
-  })
-    .then((fn) => {
-      if (cancelled) fn();
-      else unlisten = fn;
-    })
-    .catch(() => {
-      // 訂閱失敗時沒有可做的補救；初始快照仍會載入。
-    });
+  // 取消後、底層監聽真正移除前仍可能收到事件，這段期間的事件要丟掉。
+  let active = true
+  function deliver(event: { payload: T }) {
+    if (active) handler(event.payload)
+  }
+  const unlisten = syncUnlisten(listen<T>(name, deliver), ignoreSubscribeError)
   return () => {
-    cancelled = true;
-    unlisten?.();
-  };
+    active = false
+    unlisten()
+  }
 }
 
 /**
@@ -48,21 +46,21 @@ export function subscribeSnapshots(
   onSnapshot: (snapshot: Snapshot) => void,
   onError: (error: CueError) => void,
 ): () => void {
-  let cancelled = false;
-  let receivedEvent = false;
+  let cancelled = false
+  let receivedEvent = false
   const stop = onSessionsUpdated((snapshot) => {
-    receivedEvent = true;
-    onSnapshot(snapshot);
-  });
+    receivedEvent = true
+    onSnapshot(snapshot)
+  })
   getSnapshot()
     .then((snapshot) => {
-      if (!cancelled && !receivedEvent) onSnapshot(snapshot);
+      if (!cancelled && !receivedEvent) onSnapshot(snapshot)
     })
     .catch((e: unknown) => {
-      if (!cancelled) onError(toCueError(e));
-    });
+      if (!cancelled) onError(toCueError(e))
+    })
   return () => {
-    cancelled = true;
-    stop();
-  };
+    cancelled = true
+    stop()
+  }
 }

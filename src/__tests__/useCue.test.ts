@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import type { BackendInfo, SessionNode, Snapshot, Workspace } from "../types";
-import { selectUnclassified, selectWorkspaceGroups, useCue } from "../store/useCue";
+import { beforeEach, describe, expect, it } from "vitest"
+import type { BackendInfo, SessionNode, Snapshot, Workspace } from "../types"
+import { selectUnclassified, selectWorkspaceGroups, useCue } from "../store/useCue"
 
 const backend: BackendInfo = {
   id: "iterm2",
@@ -14,10 +14,10 @@ const backend: BackendInfo = {
   },
   installed: { iterm2: true, terminalApp: true },
   fallback: null,
-};
+}
 
 function ws(id: string): Workspace {
-  return { id, path: `/proj/${id}`, name: id, collapsed: false, branch: "main", detached: false };
+  return { id, path: `/proj/${id}`, name: id, collapsed: false, branch: "main", detached: false }
 }
 
 function node(id: string, workspaceId: string | null, windowId: number, tabIndex: number, alive = true): SessionNode {
@@ -34,11 +34,11 @@ function node(id: string, workspaceId: string | null, windowId: number, tabIndex
     windowId,
     tabIndex,
     alive,
-  };
+  }
 }
 
 function snapshot(partial: Partial<Snapshot> = {}): Snapshot {
-  return { workspaces: [], sessions: [], unclassified: [], backend, preferredOpenMode: null, ...partial };
+  return { workspaces: [], sessions: [], unclassified: [], backend, preferredOpenMode: null, ...partial }
 }
 
 describe("applySnapshot", () => {
@@ -50,24 +50,24 @@ describe("applySnapshot", () => {
       backend: null,
       preferredOpenMode: null,
       lastError: null,
-    });
-  });
+    })
+  })
 
   it("以 id 為 key 存放節點並寫入後端資訊", () => {
-    useCue.getState().applySnapshot(snapshot({ sessions: [node("a", null, 1, 1), node("b", null, 1, 2)] }));
-    const s = useCue.getState();
-    expect(Object.keys(s.sessions).sort()).toEqual(["a", "b"]);
-    expect(s.sessions.b.tabIndex).toBe(2);
-    expect(s.backend).toEqual(backend);
-  });
+    useCue.getState().applySnapshot(snapshot({ sessions: [node("a", null, 1, 1), node("b", null, 1, 2)] }))
+    const s = useCue.getState()
+    expect(Object.keys(s.sessions).sort()).toEqual(["a", "b"])
+    expect(s.sessions.b.tabIndex).toBe(2)
+    expect(s.backend).toEqual(backend)
+  })
 
   it("寫入預設開啟方式，之後的快照沒有設定時清回 null", () => {
-    const { applySnapshot } = useCue.getState();
-    applySnapshot(snapshot({ preferredOpenMode: "aiLeftZshRight" }));
-    expect(useCue.getState().preferredOpenMode).toBe("aiLeftZshRight");
-    applySnapshot(snapshot());
-    expect(useCue.getState().preferredOpenMode).toBeNull();
-  });
+    const { applySnapshot } = useCue.getState()
+    applySnapshot(snapshot({ preferredOpenMode: "aiLeftZshRight" }))
+    expect(useCue.getState().preferredOpenMode).toBe("aiLeftZshRight")
+    applySnapshot(snapshot())
+    expect(useCue.getState().preferredOpenMode).toBeNull()
+  })
 
   it("依工作區分組，工作區維持設定檔順序，空工作區也列出", () => {
     useCue.getState().applySnapshot(
@@ -75,11 +75,11 @@ describe("applySnapshot", () => {
         workspaces: [ws("b"), ws("a"), ws("empty")],
         sessions: [node("1", "a", 1, 1), node("2", "b", 2, 1), node("3", "a", 3, 1)],
       }),
-    );
-    const groups = selectWorkspaceGroups(useCue.getState());
-    expect(groups.map((g) => g.workspace.id)).toEqual(["b", "a", "empty"]);
-    expect(groups.map((g) => g.sessions.map((n) => n.id))).toEqual([["2"], ["1", "3"], []]);
-  });
+    )
+    const groups = selectWorkspaceGroups(useCue.getState())
+    expect(groups.map((g) => g.workspace.id)).toEqual(["b", "a", "empty"])
+    expect(groups.map((g) => g.sessions.map((n) => n.id))).toEqual([["2"], ["1", "3"], []])
+  })
 
   it("工作區內依視窗、再依分頁排序，已結束的節點保留", () => {
     useCue.getState().applySnapshot(
@@ -93,11 +93,11 @@ describe("applySnapshot", () => {
           node("w2t2", "a", 2, 2),
         ],
       }),
-    );
-    const [group] = selectWorkspaceGroups(useCue.getState());
-    expect(group.sessions.map((n) => n.id)).toEqual(["w2t1", "w2t2", "w2t3", "w5t2", "w9t1"]);
-    expect(group.sessions[2].alive).toBe(false);
-  });
+    )
+    const [group] = selectWorkspaceGroups(useCue.getState())
+    expect(group.sessions.map((n) => n.id)).toEqual(["w2t1", "w2t2", "w2t3", "w5t2", "w9t1"])
+    expect(group.sessions[2].alive).toBe(false)
+  })
 
   it("未歸類只取快照列出的 id，不混入工作區分組", () => {
     useCue.getState().applySnapshot(
@@ -112,52 +112,52 @@ describe("applySnapshot", () => {
         ],
         unclassified: ["u2", "u1", "missing"],
       }),
-    );
-    const state = useCue.getState();
-    expect(selectUnclassified(state).map((n) => n.id)).toEqual(["u1", "u2"]);
-    expect(selectWorkspaceGroups(state)[0].sessions.map((n) => n.id)).toEqual(["in-a"]);
-  });
+    )
+    const state = useCue.getState()
+    expect(selectUnclassified(state).map((n) => n.id)).toEqual(["u1", "u2"])
+    expect(selectWorkspaceGroups(state)[0].sessions.map((n) => n.id)).toEqual(["in-a"])
+  })
 
   it("新快照完整取代舊狀態", () => {
-    const { applySnapshot } = useCue.getState();
-    applySnapshot(snapshot({ workspaces: [ws("a")], sessions: [node("old", "a", 1, 1)], unclassified: [] }));
-    applySnapshot(snapshot({ workspaces: [ws("a")], sessions: [node("new", null, 1, 1)], unclassified: ["new"] }));
-    const state = useCue.getState();
-    expect(Object.keys(state.sessions)).toEqual(["new"]);
-    expect(selectWorkspaceGroups(state)[0].sessions).toEqual([]);
-    expect(selectUnclassified(state).map((n) => n.id)).toEqual(["new"]);
-  });
+    const { applySnapshot } = useCue.getState()
+    applySnapshot(snapshot({ workspaces: [ws("a")], sessions: [node("old", "a", 1, 1)], unclassified: [] }))
+    applySnapshot(snapshot({ workspaces: [ws("a")], sessions: [node("new", null, 1, 1)], unclassified: ["new"] }))
+    const state = useCue.getState()
+    expect(Object.keys(state.sessions)).toEqual(["new"])
+    expect(selectWorkspaceGroups(state)[0].sessions).toEqual([])
+    expect(selectUnclassified(state).map((n) => n.id)).toEqual(["new"])
+  })
 
   it("輸入未變時 selector 回傳同一個物件", () => {
-    useCue.getState().applySnapshot(snapshot({ workspaces: [ws("a")], sessions: [node("1", "a", 1, 1)] }));
-    const state = useCue.getState();
-    expect(selectWorkspaceGroups(state)).toBe(selectWorkspaceGroups(state));
-    expect(selectUnclassified(state)).toBe(selectUnclassified(state));
-  });
-});
+    useCue.getState().applySnapshot(snapshot({ workspaces: [ws("a")], sessions: [node("1", "a", 1, 1)] }))
+    const state = useCue.getState()
+    expect(selectWorkspaceGroups(state)).toBe(selectWorkspaceGroups(state))
+    expect(selectUnclassified(state)).toBe(selectUnclassified(state))
+  })
+})
 
 describe("applyBranchUpdate", () => {
   beforeEach(() => {
-    useCue.setState({ workspaces: [ws("a"), ws("b")] });
-  });
+    useCue.setState({ workspaces: [ws("a"), ws("b")] })
+  })
 
   it("只更新對應工作區的分支", () => {
-    const before = useCue.getState().workspaces;
-    useCue.getState().applyBranchUpdate({ workspaceId: "b", branch: "HEAD abc1234", detached: true });
-    const after = useCue.getState().workspaces;
-    expect(after[1]).toEqual({ ...ws("b"), branch: "HEAD abc1234", detached: true });
-    expect(after[0]).toBe(before[0]);
-  });
+    const before = useCue.getState().workspaces
+    useCue.getState().applyBranchUpdate({ workspaceId: "b", branch: "HEAD abc1234", detached: true })
+    const after = useCue.getState().workspaces
+    expect(after[1]).toEqual({ ...ws("b"), branch: "HEAD abc1234", detached: true })
+    expect(after[0]).toBe(before[0])
+  })
 
   it("非 Git 時分支為 null", () => {
-    useCue.getState().applyBranchUpdate({ workspaceId: "a", branch: null, detached: false });
-    expect(useCue.getState().workspaces[0].branch).toBeNull();
-  });
+    useCue.getState().applyBranchUpdate({ workspaceId: "a", branch: null, detached: false })
+    expect(useCue.getState().workspaces[0].branch).toBeNull()
+  })
 
   it("未知工作區或值相同時不換參照", () => {
-    const before = useCue.getState().workspaces;
-    useCue.getState().applyBranchUpdate({ workspaceId: "missing", branch: "x", detached: false });
-    useCue.getState().applyBranchUpdate({ workspaceId: "a", branch: "main", detached: false });
-    expect(useCue.getState().workspaces).toBe(before);
-  });
-});
+    const before = useCue.getState().workspaces
+    useCue.getState().applyBranchUpdate({ workspaceId: "missing", branch: "x", detached: false })
+    useCue.getState().applyBranchUpdate({ workspaceId: "a", branch: "main", detached: false })
+    expect(useCue.getState().workspaces).toBe(before)
+  })
+})

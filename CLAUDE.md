@@ -125,6 +125,26 @@ feat: 解析 ps 輸出並判斷前景程式與類型
 - `TerminalBackend` trait 是唯一的終端機介面，上層只依賴 trait 與 `capabilities()`。
 - 程式碼註解可用繁體中文；識別字用英文。
 
+### 程式碼風格（前端 TS／TSX）
+
+- **敘述結尾不加分號**。格式一律交給 Prettier（`.prettierrc.json`：`semi: false`、雙引號、寬度 120）；寫完執行 `pnpm format`，`pnpm verify` 會以 `pnpm format:check` 檢查。Rust 照 rustfmt，不適用此條。
+- **JSX 裡不寫邏輯**。事件屬性只能放具名函式（`onKeyDown={handleKeyDown}`），或只呼叫一個函式的箭頭函式（`onClick={() => setKind(k)}`）；有判斷、多個步驟、`preventDefault`／`stopPropagation` 時，一律拆成元件內的具名函式（`handleXxx`）。`className`、`title` 等屬性裡的條件組合、巢狀三元、多條件判斷，同樣拆成具名函式或變數；只留簡單的 `cond && <X />` 與二選一的文字。
+
+  ```tsx
+  // 不要這樣寫
+  <input onKeyDown={(e) => { if (e.nativeEvent.isComposing) return; if (e.key === "Enter") { … } }} />
+
+  // 要這樣寫
+  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (isImeComposing(e)) return
+    if (e.key === "Enter") { … }
+  }
+  <input onKeyDown={handleKeyDown} />
+  ```
+
+- **重複的東西拆出來共用**。同一段邏輯、常數或畫面結構出現第二次就抽出：跨元件的純函式放 `src/lib/`、React hook 放 `src/hooks/`、共用元件放 `src/components/`。新增前先找有沒有現成的可用。
+- **寫給接手的人看**。函式與變數以用途命名（`showAiWarning` 而不是 `flag`），一個函式只做一件事；條件太長時先命名成變數或函式再使用。
+
 ### 註解
 
 - 只寫讀程式碼看不出來的重點（為什麼這樣做、限制、陷阱），讓接手的人不用翻其他檔案就看得懂。
@@ -171,7 +191,8 @@ docs/  scripts/  install.sh  uninstall.sh
 | `pnpm tauri dev` | 開發預覽 | 1-1-01 完成後 |
 | `pnpm test` | 前端 Vitest | 1-1-02 完成後 |
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Rust 單元測試 | 1-1-01 完成後 |
-| `pnpm verify` | cargo check + clippy + cargo test + 前端 build + test（+ 樣式檢查） | 1-1-04 完成後 |
+| `pnpm verify` | cargo check + clippy + cargo test + 前端 build + test + 格式檢查（+ 樣式檢查） | 1-1-04 完成後 |
+| `pnpm format` | 以 Prettier 格式化前端（不加分號） | 隨時 |
 | `cargo run --manifest-path src-tauri/Cargo.toml --example probe_discover` | 終端機探索探針 | 1-2-02 完成後 |
 | `pnpm lint:style` | 檢查元件中的硬編碼顏色／字型／圓角 | 4-1-05 完成後 |
 | `pnpm tauri build` | 本機打包 | 1-1-01 完成後 |

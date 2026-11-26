@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { useCue } from "../store/useCue";
+import { describe, expect, it } from "vitest"
+import { useCue } from "../store/useCue"
 
 describe("useCue store", () => {
   it("建立後 sessions 與 workspaces 為空", () => {
-    const state = useCue.getState();
-    expect(state.sessions).toEqual({});
-    expect(state.workspaces).toEqual([]);
-  });
-});
+    const state = useCue.getState()
+    expect(state.sessions).toEqual({})
+    expect(state.workspaces).toEqual([])
+  })
+})

@@ -1,9 +1,9 @@
-import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
+import { defineConfig } from "vitest/config"
+import react from "@vitejs/plugin-react"
+import tailwindcss from "@tailwindcss/vite"
 // @ts-expect-error type error without @types/node package
-import process from "node:process";
-const host = process.env.TAURI_DEV_HOST;
+import process from "node:process"
+const host = process.env.TAURI_DEV_HOST
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
@@ -34,4 +34,4 @@ export default defineConfig(() => ({
   test: {
     environment: "jsdom",
   },
-}));
+}))

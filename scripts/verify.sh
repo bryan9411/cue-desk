@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 專案整體檢查：Rust 編譯／Lint／測試、前端建置／測試，以及（存在時）樣式檢查。
+# 專案整體檢查：Rust 編譯／Lint／測試、前端建置／測試／格式，以及（存在時）樣式檢查。
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -24,6 +24,9 @@ pnpm build
 
 step "pnpm test"
 pnpm test
+
+step "pnpm format:check"
+pnpm format:check
 
 if node -e 'process.exit(require("./package.json").scripts?.["lint:style"] ? 0 : 1)'; then
   step "pnpm lint:style"
