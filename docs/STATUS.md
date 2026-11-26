@@ -56,7 +56,7 @@
   - [x] 2-3-02 feat: 合併探索結果並管理節點生命週期
   - [x] 2-3-03 feat: 每 2 秒探索迴圈與 IPC 指令、事件
 - [ ] **slice-2-4 基礎側邊欄** → `docs/slices/slice-2-4.md`
-  - [ ] 2-4-01 feat: 前端型別、IPC 包裝與 Zustand store
+  - [x] 2-4-01 feat: 前端型別、IPC 包裝與 Zustand store
   - [ ] 2-4-02 feat: 樹狀側邊欄與點擊聚焦
   - [ ] 👤 2-4-H1 M1 實機驗收
 
