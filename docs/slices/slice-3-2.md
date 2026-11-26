@@ -34,17 +34,26 @@
   - `split_zsh(sessionId, direction)` command：工作區路徑取該節點的歸屬工作區根目錄；未歸類節點則用其 cwd。
 - **驗證**：本機手動：對執行中的 `claude` 窗格各執行一次右側／下方，確認位置正確且 claude 未中斷。
 
-### 3-2-02 feat: 重新命名與關閉工作階段
+### 3-2-02a feat: 重新命名工作階段
 - **UI**：否
-- **預計檔案**（7）：`src-tauri/src/terminal/scripts/iterm2_rename.applescript`、`src-tauri/src/terminal/scripts/iterm2_close.applescript`、`src-tauri/src/terminal/scripts/terminal_app_close.applescript`、`src-tauri/src/terminal/iterm2.rs`、`src-tauri/src/terminal/terminal_app.rs`、`src-tauri/src/commands.rs`、`docs/design/notes-probe.md`
+- **預計檔案**（8）：`src-tauri/src/terminal/scripts/iterm2_rename.applescript`、`src-tauri/src/terminal/mod.rs`、`src-tauri/src/terminal/iterm2.rs`、`src-tauri/src/config.rs`、`src-tauri/src/commands.rs`、`src-tauri/src/lib.rs`、`src-tauri/src/error.rs`、`src/types.ts`（新增 `InvalidLabel` 錯誤類別）
 - **實作重點**：
   - `rename_session(id, label)`：標籤寫入 `config.nodes[key].label`（空字串＝清除標籤，回到預設名稱）；iTerm2 後端同步 `set name of s to (item 2 of argv)`。若使用者的 shell 會覆寫標題，以 shell 為準，不另外處理。
-  - 3-1-04 的 `create_session` 若帶標籤，建立後也呼叫一次 `rename`。
+  - 清除標籤時 iTerm2 標題不另外還原（交由 shell／iTerm2 下次自行更新）。
+  - 後端不支援重新命名（`capabilities().rename == false`，例如 Terminal.app）或節點已 `exited` 時，只更新 Cue 內的標籤，不視為錯誤。
+  - 3-1-04 的 `create_session` 若帶標籤，建立後也呼叫一次 `rename`（失敗不影響建立結果）。
+  - 標籤長度上限（例如 64 字元），拒絕控制字元。
+  - 寫入設定後立即更新節點並推送快照，不等下一輪探索。
+- **驗證**：`cargo test`（標籤驗證、清除標籤）；本機手動：重新命名後 iTerm2 分頁標題變更；重開 Cue 標籤仍在。
+
+### 3-2-02b feat: 關閉工作階段
+- **UI**：否
+- **預計檔案**（8）：`src-tauri/src/terminal/scripts/iterm2_close.applescript`、`src-tauri/src/terminal/scripts/terminal_app_close.applescript`、`src-tauri/src/terminal/mod.rs`、`src-tauri/src/terminal/iterm2.rs`、`src-tauri/src/terminal/terminal_app.rs`、`src-tauri/src/commands.rs`、`src-tauri/src/lib.rs`、`docs/design/notes-probe.md`
+- **實作重點**：
   - `close_session(id)`：iTerm2 對該 session 送 `close`；若程式仍在執行，交由 iTerm2 自己的確認機制。
   - Terminal.app（001 第 3.3 節）：原生分頁在 AppleScript 中各自是一個視窗，`close` 該視窗只會關閉這一個分頁。`terminal_app_close.applescript` 以 argv 接收視窗 ID 與 tty：找到視窗後確認其 tty 相符，且**該視窗只有 1 個分頁**才 `close`；不只 1 個分頁時（非原生分頁的情況）不關閉，回傳錯誤「Terminal.app 無法單獨關閉分頁」。程式仍在執行時交由 Terminal.app 自己的確認機制。
   - 關閉後觸發一次探索，節點依探索結果變為 `exited`。
-  - 標籤長度上限（例如 64 字元），拒絕控制字元。
-- **驗證**：本機手動：重新命名後 iTerm2 分頁標題變更；關閉後 ≤ 3 秒節點變 `exited`。Terminal.app：以 Cmd+T 開 3 個分頁，關閉中間那個，確認**只關閉該分頁**、同群組其他分頁不受影響（001 標示的待實機確認項目），結果記錄到 `docs/design/notes-probe.md`。
+- **驗證**：本機手動：關閉後 ≤ 3 秒節點變 `exited`。Terminal.app：以 Cmd+T 開 3 個分頁，關閉中間那個，確認**只關閉該分頁**、同群組其他分頁不受影響（001 標示的待實機確認項目），結果記錄到 `docs/design/notes-probe.md`。
 
 ### 3-2-03 feat: 重新開啟、移除與未歸類操作
 - **UI**：否

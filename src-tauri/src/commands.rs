@@ -6,13 +6,16 @@ use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Manager, State};
 
-use crate::config::{CueConfig, Workspace};
+use crate::config::{self, CueConfig, Workspace};
 use crate::discovery;
 use crate::error::CueError;
 use crate::layout;
+use crate::model::SessionKey;
 use crate::shell::SessionKindToCreate;
 use crate::state::{lock, AppState, Snapshot};
-use crate::terminal::{Capabilities, CreateSpec, CreatedSession, OpenMode, SplitDirection};
+use crate::terminal::{
+    Capabilities, CreateSpec, CreatedSession, OpenMode, SplitDirection, TerminalBackend,
+};
 
 /// 目前的完整狀態。
 #[tauri::command]
@@ -52,6 +55,7 @@ pub async fn create_session(
     label: Option<String>,
     mode: OpenMode,
 ) -> Result<String, CueError> {
+    let label = label.map(|l| config::normalize_label(&l)).transpose()?.filter(|l| !l.is_empty());
     let state = app.state::<AppState>();
     let backend = state.backend();
     check_mode(backend.capabilities(), mode)?;
@@ -72,6 +76,12 @@ pub async fn create_session(
     let spec = CreateSpec { workspace_path, kind, label, mode, target_window };
     let (created, spec) = tauri::async_runtime::spawn_blocking(move || {
         let created = backend.create(&spec);
+        if let (Ok(created), Some(label)) = (&created, &spec.label) {
+            // 標題同步失敗不影響建立結果：標籤已綁在 Cue 的節點上。
+            if let Err(e) = sync_title(backend.as_ref(), &created.key, label) {
+                eprintln!("[cue] 無法同步新工作階段的標題：{e}");
+            }
+        }
         (created, spec)
     })
     .await
@@ -85,6 +95,50 @@ pub async fn create_session(
     }
     state.trigger_discovery();
     Ok(created.key.as_id())
+}
+
+/// 重新命名工作階段。`label` 為空字串時清除標籤，節點回到預設名稱。
+///
+/// 標籤綁在節點身分上、存於設定檔；已結束的節點也可以改，重新開啟時沿用。
+/// 存活的節點在支援的後端（iTerm2）同步設定窗格名稱；清除標籤時不還原終端機標題。
+#[tauri::command]
+pub async fn rename_session(app: AppHandle, id: String, label: String) -> Result<(), CueError> {
+    let label = config::normalize_label(&label)?;
+    let state = app.state::<AppState>();
+    let (key, alive) = {
+        let registry = lock(&state.registry);
+        let node = registry.get(&id).ok_or(CueError::ObjectNotFound)?;
+        (node.key.clone(), node.alive)
+    };
+    {
+        let mut config = lock(&state.config);
+        config.set_node_label(id, &label);
+        state.save_config(&config);
+    }
+    // 下一輪探索會依設定檔重算節點標籤並推送快照。
+    state.trigger_discovery();
+
+    if !alive || label.is_empty() {
+        return Ok(());
+    }
+    let backend = state.backend();
+    let result = tauri::async_runtime::spawn_blocking(move || sync_title(backend.as_ref(), &key, &label))
+        .await
+        .map_err(|e| CueError::Io(format!("重新命名的工作異常結束：{e}")))?;
+    match result {
+        // 窗格剛好在這段期間被關閉：標籤已保存，探索會把節點標為已結束。
+        Err(CueError::ObjectNotFound) => Ok(()),
+        other => other,
+    }
+}
+
+/// 把標籤同步到終端機標題；後端不支援重新命名時略過（標籤只顯示在 Cue）。
+fn sync_title(backend: &dyn TerminalBackend, key: &SessionKey, label: &str) -> Result<(), CueError> {
+    if backend.capabilities().rename {
+        backend.rename(key, label)
+    } else {
+        Ok(())
+    }
 }
 
 /// 確認後端支援這個開啟方式。開新視窗是所有後端都支援的基本操作。
@@ -229,7 +283,51 @@ fn resolve_dir(path: &Path) -> Result<PathBuf, CueError> {
 mod tests {
     use super::*;
 
-    use crate::model::SessionKey;
+    use std::sync::Mutex;
+
+    use crate::model::DiscoveredSession;
+
+    /// 記錄 `rename` 呼叫的後端。
+    struct RenameRecorder {
+        caps: Capabilities,
+        renamed: Mutex<Vec<(SessionKey, String)>>,
+    }
+
+    impl TerminalBackend for RenameRecorder {
+        fn id(&self) -> &'static str {
+            "recorder"
+        }
+        fn capabilities(&self) -> Capabilities {
+            self.caps
+        }
+        fn is_running(&self) -> bool {
+            true
+        }
+        fn discover(&self) -> Result<Vec<DiscoveredSession>, CueError> {
+            Ok(Vec::new())
+        }
+        fn focus(&self, _key: &SessionKey) -> Result<(), CueError> {
+            Ok(())
+        }
+        fn rename(&self, key: &SessionKey, name: &str) -> Result<(), CueError> {
+            lock(&self.renamed).push((key.clone(), name.to_owned()));
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn title_sync_follows_rename_capability() {
+        let key = SessionKey::Iterm2 { unique_id: "A".into() };
+
+        let plain = RenameRecorder { caps: Capabilities::default(), renamed: Mutex::default() };
+        assert_eq!(sync_title(&plain, &key, "前端"), Ok(()));
+        assert!(lock(&plain.renamed).is_empty(), "不支援重新命名的後端不呼叫 rename");
+
+        let caps = Capabilities { rename: true, ..Capabilities::default() };
+        let iterm = RenameRecorder { caps, renamed: Mutex::default() };
+        assert_eq!(sync_title(&iterm, &key, "前端"), Ok(()));
+        assert_eq!(*lock(&iterm.renamed), vec![(key, "前端".to_owned())]);
+    }
 
     #[test]
     fn mode_must_match_capabilities() {

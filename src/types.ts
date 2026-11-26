@@ -88,6 +88,7 @@ export type CueErrorKind =
   | "workspace_not_found"
   | "invalid_workspace"
   | "unsafe_path"
+  | "invalid_label"
   | "unknown";
 
 export interface CueError {

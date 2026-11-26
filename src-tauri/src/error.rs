@@ -35,6 +35,8 @@ pub enum CueError {
     InvalidWorkspace(String),
     /// 路徑含換行或其他控制字元（或不是合法 UTF-8），不能安全送入終端機。
     UnsafePath,
+    /// 標籤不合法（過長或含控制字元），內容為原因。
+    InvalidLabel(String),
 }
 
 impl CueError {
@@ -52,6 +54,7 @@ impl CueError {
             CueError::WorkspaceNotFound => "workspace_not_found",
             CueError::InvalidWorkspace(_) => "invalid_workspace",
             CueError::UnsafePath => "unsafe_path",
+            CueError::InvalidLabel(_) => "invalid_label",
         }
     }
 
@@ -102,6 +105,7 @@ impl fmt::Display for CueError {
             CueError::WorkspaceNotFound => write!(f, "找不到指定的工作區"),
             CueError::InvalidWorkspace(msg) => write!(f, "無法加入工作區：{msg}"),
             CueError::UnsafePath => write!(f, "路徑含有換行或控制字元，無法安全送入終端機"),
+            CueError::InvalidLabel(msg) => write!(f, "標籤無效：{msg}"),
         }
     }
 }
@@ -176,5 +180,9 @@ mod tests {
 
         let json = serde_json::to_value(CueError::UnsafePath).unwrap();
         assert_eq!(json["kind"], "unsafe_path");
+
+        let json = serde_json::to_value(CueError::InvalidLabel("最多 64 個字元".into())).unwrap();
+        assert_eq!(json["kind"], "invalid_label");
+        assert_eq!(json["message"], "標籤無效：最多 64 個字元");
     }
 }

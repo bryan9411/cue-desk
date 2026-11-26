@@ -16,6 +16,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 
+use crate::error::CueError;
 use crate::model::SessionKind;
 use crate::terminal::OpenMode;
 
@@ -28,6 +29,9 @@ pub const DEFAULT_DEBOUNCE: Duration = Duration::from_millis(300);
 const PREF_LAST_OPEN_MODE: &str = "lastOpenMode";
 /// `preferences` 中使用者指定的預設開啟方式的鍵。
 const PREF_DEFAULT_OPEN_MODE: &str = "defaultOpenMode";
+
+/// 節點標籤的最大字元數（以 Unicode 字元計）。
+pub const LABEL_MAX_CHARS: usize = 64;
 
 const CONFIG_DIR_NAME: &str = ".cue";
 const CONFIG_FILE_NAME: &str = "config.json";
@@ -108,14 +112,30 @@ impl CueConfig {
         read(PREF_DEFAULT_OPEN_MODE).or_else(|| read(PREF_LAST_OPEN_MODE))
     }
 
-    /// 把使用者標籤綁到節點。空白標籤不寫入。
+    /// 把使用者標籤綁到節點。空白標籤表示清除，節點回到預設名稱。
     pub fn set_node_label(&mut self, node_id: String, label: &str) {
         let label = label.trim();
         if label.is_empty() {
+            if let Some(meta) = self.nodes.get_mut(&node_id) {
+                meta.label = None;
+            }
             return;
         }
         self.nodes.entry(node_id).or_default().label = Some(label.to_owned());
     }
+}
+
+/// 驗證並整理使用者輸入的標籤：去掉前後空白，拒絕過長或含控制字元的標籤。
+/// 回傳空字串表示清除標籤。標籤會送進終端機標題，控制字元可能被當成跳脫序列。
+pub fn normalize_label(label: &str) -> Result<String, CueError> {
+    let label = label.trim();
+    if label.chars().any(char::is_control) {
+        return Err(CueError::InvalidLabel("不得含有換行或控制字元".into()));
+    }
+    if label.chars().count() > LABEL_MAX_CHARS {
+        return Err(CueError::InvalidLabel(format!("最多 {LABEL_MAX_CHARS} 個字元")));
+    }
+    Ok(label.to_owned())
 }
 
 /// 已加入的工作區。
@@ -539,6 +559,26 @@ mod tests {
         c.set_node_label("iterm2:B".into(), "   ");
         assert_eq!(c.nodes["iterm2:A"].label.as_deref(), Some("後端"));
         assert!(!c.nodes.contains_key("iterm2:B"));
+    }
+
+    #[test]
+    fn blank_label_clears_but_keeps_last_known_state() {
+        let mut c = sample_config();
+        c.set_node_label("iterm2:ABC-123".into(), "");
+        let meta = &c.nodes["iterm2:ABC-123"];
+        assert_eq!(meta.label, None);
+        assert_eq!(meta.last_tty.as_deref(), Some("ttys003"));
+    }
+
+    #[test]
+    fn label_is_trimmed_and_validated() {
+        assert_eq!(normalize_label("  Q3 財報精讀 "), Ok("Q3 財報精讀".into()));
+        assert_eq!(normalize_label("   "), Ok(String::new()));
+        assert_eq!(normalize_label(&"字".repeat(LABEL_MAX_CHARS)).map(|l| l.chars().count()), Ok(LABEL_MAX_CHARS));
+        assert!(matches!(normalize_label(&"字".repeat(LABEL_MAX_CHARS + 1)), Err(CueError::InvalidLabel(_))));
+        for bad in ["前\n端", "a\tb", "x\u{1b}]0;title\u{7}", "a\u{7f}b"] {
+            assert!(matches!(normalize_label(bad), Err(CueError::InvalidLabel(_))), "{bad:?}");
+        }
     }
 
     #[test]

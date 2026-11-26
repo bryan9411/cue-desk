@@ -22,8 +22,8 @@ const DISCOVER_FIELDS: usize = 10;
 /// unique ID 的最大長度；iTerm2 目前是 36 字元的 UUID，保留餘裕。
 const UNIQUE_ID_MAX_LEN: usize = 64;
 
-/// 聚焦腳本找到窗格時的回傳值。
-const FOCUS_OK: &str = "ok";
+/// 聚焦與重新命名腳本找到窗格時的回傳值。
+const SCRIPT_OK: &str = "ok";
 
 /// 建立工作階段的逾時：iTerm2 未執行時要先冷啟動，常超過預設的 5 秒。
 const CREATE_TIMEOUT: Duration = Duration::from_secs(20);
@@ -75,7 +75,7 @@ impl TerminalBackend for ITerm2Backend {
             return Err(CueError::ObjectNotFound);
         }
         let output = osascript::run(scripts::ITERM2_FOCUS, &[unique_id.as_str()])?;
-        if output == FOCUS_OK {
+        if output == SCRIPT_OK {
             Ok(())
         } else {
             Err(CueError::ObjectNotFound)
@@ -115,6 +115,26 @@ impl TerminalBackend for ITerm2Backend {
             &[unique_id.as_str(), split_zsh_direction_arg(direction), &command],
         )?;
         if is_valid_unique_id(&output) {
+            Ok(())
+        } else {
+            Err(CueError::ObjectNotFound)
+        }
+    }
+
+    /// 設定窗格名稱（分頁標題）。不切換焦點；iTerm2 未執行時回傳 `ObjectNotFound`。
+    fn rename(&self, key: &SessionKey, name: &str) -> Result<(), CueError> {
+        let SessionKey::Iterm2 { unique_id } = key else {
+            return Err(CueError::ObjectNotFound);
+        };
+        if !is_valid_unique_id(unique_id) {
+            return Err(CueError::ObjectNotFound);
+        }
+        // 標籤在指令層已驗證；這裡再擋一次，避免控制字元變成標題的跳脫序列。
+        if name.chars().any(char::is_control) {
+            return Err(CueError::InvalidLabel("不得含有換行或控制字元".into()));
+        }
+        let output = osascript::run(scripts::ITERM2_RENAME, &[unique_id.as_str(), name])?;
+        if output == SCRIPT_OK {
             Ok(())
         } else {
             Err(CueError::ObjectNotFound)
@@ -321,6 +341,17 @@ mod tests {
             backend.split_zsh(&valid, SplitDirection::Right, Path::new("/tmp/a\nrm -rf ~")),
             Err(CueError::UnsafePath)
         );
+    }
+
+    #[test]
+    fn rename_rejects_bad_input_without_running_script() {
+        let backend = ITerm2Backend::new();
+        let foreign = SessionKey::TerminalApp { window_id: 1, tty: "ttys001".into() };
+        assert_eq!(backend.rename(&foreign, "前端"), Err(CueError::ObjectNotFound));
+        let invalid = SessionKey::Iterm2 { unique_id: "x\" & quit".into() };
+        assert_eq!(backend.rename(&invalid, "前端"), Err(CueError::ObjectNotFound));
+        let valid = SessionKey::Iterm2 { unique_id: "281FB514-2378-4265-804C-C17B1E9060AE".into() };
+        assert!(matches!(backend.rename(&valid, "a\u{1b}]0;x\u{7}"), Err(CueError::InvalidLabel(_))));
     }
 
     #[test]

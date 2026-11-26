@@ -40,6 +40,9 @@ pub mod scripts {
     /// iTerm2 在指定窗格旁分割出 zsh；argv：unique ID、分割方向（`vertical`／`horizontal`）、
     /// 指令。回傳新窗格的 unique ID；找不到目標窗格時回傳空字串。
     pub const ITERM2_SPLIT_ZSH: &str = include_str!("scripts/iterm2_split_zsh.applescript");
+    /// 設定 iTerm2 指定窗格的名稱；argv：unique ID、新名稱。找到回傳 `ok`，否則空字串。
+    /// iTerm2 未執行時不啟動它。
+    pub const ITERM2_RENAME: &str = include_str!("scripts/iterm2_rename.applescript");
 }
 
 /// 後端支援的操作，前端依此停用不支援的功能。
@@ -260,5 +263,6 @@ mod tests {
         assert!(!scripts::ITERM2_CREATE_SPLIT.is_empty());
         assert!(!scripts::TERMINAL_APP_CREATE.is_empty());
         assert!(!scripts::ITERM2_SPLIT_ZSH.is_empty());
+        assert!(!scripts::ITERM2_RENAME.is_empty());
     }
 }
