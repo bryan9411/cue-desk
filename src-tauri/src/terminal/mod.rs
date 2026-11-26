@@ -12,6 +12,7 @@ use crate::model::{Bounds, DiscoveredSession, ScreenIndex, SessionKey, SessionKi
 
 pub mod detect;
 pub mod iterm2;
+pub mod terminal_app;
 
 /// 固定的 AppleScript 腳本原文。變動資料一律經由 `on run argv` 傳入。
 pub mod scripts {
@@ -22,6 +23,8 @@ pub mod scripts {
     /// 列出 Terminal.app 所有分頁；Terminal.app 未執行時回傳空字串。
     pub const TERMINAL_APP_DISCOVER: &str =
         include_str!("scripts/terminal_app_discover.applescript");
+    /// 聚焦 Terminal.app 的指定分頁；argv：window id、tty（`/dev/ttysNNN`）。找到回傳 `ok`，否則空字串。
+    pub const TERMINAL_APP_FOCUS: &str = include_str!("scripts/terminal_app_focus.applescript");
 }
 
 /// 後端支援的操作，前端依此停用不支援的功能。
@@ -224,5 +227,6 @@ mod tests {
         assert!(!scripts::ITERM2_DISCOVER.is_empty());
         assert!(!scripts::ITERM2_FOCUS.is_empty());
         assert!(!scripts::TERMINAL_APP_DISCOVER.is_empty());
+        assert!(!scripts::TERMINAL_APP_FOCUS.is_empty());
     }
 }
