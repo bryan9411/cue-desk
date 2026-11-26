@@ -1,0 +1,28 @@
+# 本機規格原文（不納入版本控制）
+docs/PROMPT.md
+
+# 相依套件與建置產物
+node_modules/
+dist/
+dist-ssr/
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# 日誌
+*.log
+npm-debug.log*
+
+# 環境與機密
+.env
+.env.*
+!.env.example
+
+# 編輯器與系統檔
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+
+# Claude Code 本機設定
+.claude/settings.local.json
