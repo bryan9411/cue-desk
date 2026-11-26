@@ -1,0 +1,46 @@
+    1     0     1    0 ??       /sbin/launchd
+  330     1   330    0 ??       /usr/libexec/logd
+   98     1    98    0 ??       /Applications/iTerm.app/Contents/MacOS/iTerm2
+   99    98    99  100 ttys000  /usr/bin/login -fpl user /Applications/iTerm.app/Contents/MacOS/ShellLauncher --launch_shell
+  100    99   100  100 ttys000  -zsh
+  199    98   199  210 ttys001  /usr/bin/login -fpl user /Applications/iTerm.app/Contents/MacOS/ShellLauncher --launch_shell
+  200   199   200  210 ttys001  -zsh
+  210   200   210  210 ttys001  claude
+  211   210   210  210 ttys001  /Users/user/.codegraph/bin/node --liftoff-only /Users/user/.codegraph/lib/server.js
+  212   211   210  210 ttys001  /Users/user/.codegraph/bin/node -e \012const f = require("fs")
+  300    98   300  310 ttys002  -zsh
+  310   300   310  310 ttys002  vim src/main.rs
+  320   300   320  310 ttys002  sleep 1000
+  400    98   400  410 ttys003  -zsh
+  410   400   410  410 ttys003  npm exec @anthropic-ai/claude-code
+  411   410   410  410 ttys003  claude
+  412   411   410  410 ttys003  /Users/user/.codegraph/bin/node --liftoff-only /Users/user/.codegraph/lib/server.js
+  500    98   500  510 ttys004  -zsh
+  510   500   510  510 ttys004  npm exec @google/gemini-cli
+  511   510   510  510 ttys004  node /Users/user/.npm/_npx/6913fdfd1ea7a741/node_modules/.bin/gemini
+  512   511   510  510 ttys004  /opt/homebrew/Cellar/node/24.4.1/bin/node --max-old-space-size=8192 /Users/user/.npm/_npx/6913fdfd1ea7a741/node_modules/.bin/gemini
+  600    98   600  610 ttys005  -zsh
+  610   600   610  610 ttys005  node /opt/homebrew/bin/gemini
+  611   610   610  610 ttys005  /opt/homebrew/bin/node --max-old-space-size=8192 /opt/homebrew/bin/gemini
+  700    98   700  710 ttys006  -zsh
+  710   700   710  710 ttys006  node /opt/homebrew/lib/node_modules/@anthropic-ai/claude-code/cli.js
+  800   799   800  800 ttys007  /opt/homebrew/bin/zsh -l
+  900    98   900  910 ttys008  -zsh
+  910   900   910  910 ttys008  npm run dev
+  911   910   910  910 ttys008  sh -c vite
+  912   911   910  910 ttys008  node /Users/user/project/node_modules/.bin/vite
+ 1000    98  1000 1010 ttys009  -zsh
+ 1011  1000  1010 1010 ttys009  grep foo
+ 1012  1000  1010 1010 ttys009  less
+ 1100    98  1100 1110 ttys010  -zsh
+ 1110  1100  1110 1110 ttys010  node /opt/homebrew/bin/pnpm tauri dev
+50000  1110  1110 1110 ttys010  target/debug/cue
+50001 50000  1110 1110 ttys010  /bin/ps -A -ww -o pid=,ppid=,pgid=,tpgid=,tty=,args=
+50002 50000 50000    0 ??       /usr/bin/osascript -
+ 1200    98  1200 1200 ttys011  -bash
+ 1300    98  1300 1310 ttys012  -zsh
+ 1310  1300  1310 1310 ttys012  bun /Users/user/.bun/install/global/node_modules/@anthropic-ai/claude-code/cli.js
+ 1400    98  1400 1410 ttys013  -zsh
+ 1410  1400  1410 1410 ttys013  npx -y cowsay hello
+ 1411  1410  1410 1410 ttys013  node /Users/user/.npm/_npx/0a1b2c3d/node_modules/.bin/cowsay hello
+ 1500    98  1500 1500 ttys1024  /usr/local/bin/fish

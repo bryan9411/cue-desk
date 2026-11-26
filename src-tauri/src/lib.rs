@@ -1,6 +1,7 @@
 pub mod error;
 pub mod model;
 pub mod osascript;
+pub mod process;
 pub mod terminal;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
