@@ -53,4 +53,4 @@
   - 不提供任何 Worktree 巢狀管理 UI。
   - store 新增 `applyBranchUpdate()`。
   - 包浩斯主題的「分支徽章反白」由 4-1 的主題變數控制（例如 `--branch-badge-bg`、`--branch-badge-fg`，預設透明／`--text-muted`），本 Commit 先使用這兩個變數並在 `index.css` 給預設值。
-- **驗證**：`npm run build`；本機 `git switch` 後 ≤ 1 秒徽章更新。
+- **驗證**：`pnpm build`；本機 `git switch` 後 ≤ 1 秒徽章更新。

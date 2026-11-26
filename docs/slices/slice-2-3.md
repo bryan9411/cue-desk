@@ -67,4 +67,4 @@
     - `set_workspace_collapsed(id, collapsed)`。
     - 錯誤以 `CueError` 序列化回前端。
   - `terminal_backend` 設定在啟動時套用（M1 驗收切換 Terminal.app 時直接編輯 `config.json` 後重開；UI 切換在 4-3-02）。
-- **驗證**：`cargo test`、`cargo clippy`；`npm run tauri dev` 時以 Rust 端 debug log 印出每輪快照摘要（節點數、各自歸屬與狀態），手動開關 iTerm2 分頁、`cd` 進出工作區確認變化（前端畫面在 2-4 才有）。
+- **驗證**：`cargo test`、`cargo clippy`；`pnpm tauri dev` 時以 Rust 端 debug log 印出每輪快照摘要（節點數、各自歸屬與狀態），手動開關 iTerm2 分頁、`cd` 進出工作區確認變化（前端畫面在 2-4 才有）。

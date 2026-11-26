@@ -30,7 +30,7 @@
   - 主視窗：`titleBarStyle: "Overlay"`、`hiddenTitle: true`；`app.macOSPrivateApi: true`、主視窗 `transparent: true`（4-2-06 毛玻璃需要）。
   - `TitleBar`：左側預留紅黃綠燈寬度（約 72px），整列 `data-tauri-drag-region`；極簡斜線指揮棒 SVG 標誌＋「Cue」字樣（`--font-heading`、`--heading-weight`、`--title-size`、`--heading-tracking`）；下方以 `--header-rule`／`--header-rule-height` 繪製分隔；背景套 `--texture`。
   - `Icons.tsx` 補齊：`Warning`、`Branch`、`Sound`、`SoundOff`、`Settings`、`Pin`、`Columns`（並排終端）、`Tabs`（分頁整理）、`Expand`／`Collapse`（寬窄切換）、`Search`、`Check`、`Close`、`Monitor`、`Finder`。全部細線、`currentColor`、**不使用 emoji**。
-- **驗證**：`npm run build`；本機切換數個主題觀察標題列。
+- **驗證**：`pnpm build`；本機切換數個主題觀察標題列。
 
 ### 4-2-02 feat: 狀態燈支援 geometric 形狀
 - **UI**：是

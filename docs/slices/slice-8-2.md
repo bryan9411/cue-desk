@@ -37,20 +37,20 @@
     - 內建終端機（Terminal.app）後備模式下不支援：分割窗格、新分頁、拖檔派工。
     - 資安說明：零網路 Port、Unix Domain Socket、Cookie／Key 只存在記憶體、不跳過 AI 權限確認。
     - iTerm2 協定來源與授權說明（依 001 決定）。
-  - `THIRD_PARTY_LICENSES.md`：主要 Rust crate 與 npm 套件（名稱、版本、授權）、7 套 OFL 字型（引用 `src/assets/fonts/LICENSES.md`）；可用 `cargo metadata`／`npm ls --json` 輔助產生後人工整理，確認**沒有 GPL／AGPL**。
+  - `THIRD_PARTY_LICENSES.md`：主要 Rust crate 與前端套件（名稱、版本、授權）、7 套 OFL 字型（引用 `src/assets/fonts/LICENSES.md`）；可用 `cargo metadata`／`pnpm ls --json` 輔助產生後人工整理，確認**沒有 GPL／AGPL**。
 - **驗證**：README 中的指令逐一複製執行可用；`grep -n '<OWNER>' README.md install.sh` 無結果；授權清單無 GPL／AGPL。
 
 ### 8-2-02 docs: 開發、打包與發佈指南
 - **UI**：否
 - **預計檔案**（2）：`docs/DEVELOPMENT.md`、`README.md`
 - **實作重點**：
-  - 開發預覽：`npm install` → `npm run tauri dev`；`npm run verify` 的內容。
-  - 本機打包：`npm run tauri build`（以及 `-- --target universal-apple-darwin` 需先 `rustup target add`）。
+  - 開發預覽：`pnpm install` → `pnpm tauri dev`；`pnpm verify` 的內容。
+  - 本機打包：`pnpm tauri build`（以及 `--target universal-apple-darwin` 需先 `rustup target add`）。
   - 發佈新版本：更新 `package.json`、`src-tauri/Cargo.toml`、`tauri.conf.json` 版本號 → commit → `git tag vX.Y.Z` → `git push origin vX.Y.Z`，等待 workflow 完成。
   - Hook 設定範例的位置（`docs/hooks/`、README 段落），強調只提供範例、不自動修改使用者設定。
   - 專案結構與切片開發流程（指向 `CLAUDE.md`、`docs/STATUS.md`）。
   - README 加一行連結到 `docs/DEVELOPMENT.md`。
-- **驗證**：依文件從乾淨 clone 走一次 `npm install` 與 `npm run tauri dev`。
+- **驗證**：依文件從乾淨 clone 走一次 `pnpm install` 與 `pnpm tauri dev`。
 
 ### 👤 8-2-H1 推送 v0.1.0 tag 並在乾淨帳號驗收
 - 合併到 `main` 後，更新三處版本號為 `0.1.0`，推送 tag：`git tag v0.1.0 && git push origin v0.1.0`（Claude 不會自行 push）。

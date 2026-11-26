@@ -20,7 +20,7 @@
 - 未歸類終端機 `cd` 進工作區後 3 秒內自動歸類；再 `cd` 到另一個工作區自動改歸屬；`cd ~` 後退回「未歸類」。
 - iTerm2 未執行時 Cue 不會把它打開。
 - 切換至 Terminal.app 後備模式（編輯 `~/.cue/config.json` 的 `terminalBackend` 為 `"terminal"` 後重開）也能探索與聚焦。
-- `npm run verify` 通過。
+- `pnpm verify` 通過。
 
 ---
 
@@ -34,7 +34,7 @@
   - `ipc/api.ts`：每個 Rust command 一個具型別的包裝函式（`getSnapshot`、`focusSession`、`addWorkspace`、`setWorkspaceCollapsed`）；之後新增 command 都加在這裡。
   - `ipc/events.ts`：`listen('sessions-updated')` 的訂閱與取消。
   - `store/useCue.ts`：`workspaces`、`sessions`（以 id 為 key）、`unclassified`、`backend`、`lastError`。**所有 session 狀態更新只經由 `applySnapshot()` 與（slice-5 起）`applyStatusUpdate()` 兩個函式**。提供 selector：依工作區分組並排序（工作區內依視窗序號、分頁序號）。
-- **驗證**：Vitest：`applySnapshot` 分組、排序、未歸類分離；`npm run build`。
+- **驗證**：Vitest：`applySnapshot` 分組、排序、未歸類分離；`pnpm build`。
 
 ### 2-4-02 feat: 樹狀側邊欄與點擊聚焦
 - **UI**：是
@@ -48,7 +48,7 @@
   - 頂部 `＋`（`Plus` 圖示按鈕，有 `aria-label`）呼叫 `@tauri-apps/plugin-dialog` 的 `open({ directory: true })` 後 `addWorkspace`。
   - 所有文字以 React 純文字渲染（**禁止 `dangerouslySetInnerHTML`**）。
   - `App.tsx` 啟動時 `getSnapshot` 並訂閱事件。
-- **驗證**：`npm run build`；`npm run tauri dev` 實際操作：加入工作區、開關 iTerm2 分頁、`cd` 進出，畫面 ≤ 3 秒更新；點擊節點 iTerm2 切到該窗格。
+- **驗證**：`pnpm build`；`pnpm tauri dev` 實際操作：加入工作區、開關 iTerm2 分頁、`cd` 進出，畫面 ≤ 3 秒更新；點擊節點 iTerm2 切到該窗格。
 
 ### 👤 2-4-H1 M1 實機驗收
 - 依本文件「完成條件（M1 驗收）」逐條操作，回報每一條通過／失敗（失敗請附畫面或描述）。

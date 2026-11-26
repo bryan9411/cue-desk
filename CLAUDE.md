@@ -23,7 +23,7 @@ Cue 是 macOS 原生的多工作區 AI CLI 指揮中心：Tauri v2（Rust）+ Re
 2. 如果是 👤 人工項目：**不要實作**。說明需要使用者做什麼、完成後要提供什麼，然後停下。使用者回報完成後，把他提供的資訊記到切片文件指定的位置（例如 `docs/design/`），再勾選該項。
 3. 只讀那一支切片文件與它「必讀」列出的資料，**不讀其他切片文件**。需要了解既有程式碼時直接讀原始碼。
 4. 只實作這一個 Commit。檔案數超過上限（8 支）時先停下，提出拆成 `a`、`b`、`c` 的方案（例如 `2-3-01a`、`2-3-01b`），使用者同意後更新 STATUS.md 與切片文件再繼續。切片文件標示「**UI：是**」時，先啟用 frontend-design skill。
-5. 執行切片文件的「驗證」，以及專案的檢查：`npm run verify`（1-1-04 完成後可用；之前改為分別執行 `cargo check`、`cargo clippy`、`npm run build`）。
+5. 執行切片文件的「驗證」，以及專案的檢查：`pnpm verify`（1-1-04 完成後可用；之前改為分別執行 `cargo check`、`cargo clippy`、`pnpm build`）。
 6. 在 STATUS.md 勾選這個 Commit；子切片的最後一個 Commit 也勾選子切片那一行。只讀該行附近（步驟 1 的行號搭配 offset／limit）再修改，和程式碼放在同一個 commit。
 7. 停下回報：
    - 變更檔案，分「計入」「不計入」兩組
@@ -41,7 +41,7 @@ Cue 是 macOS 原生的多工作區 AI CLI 指揮中心：Tauri v2（Rust）+ Re
 ## 檔案數計算
 
 - **計入**：原始碼、測試、設定檔、AppleScript 腳本、文件。
-- **不計入**（但要列在回報中）：`package-lock.json`、`Cargo.lock`、`docs/STATUS.md`、自動產生的檔案（字型 woff2、建置產物、測試快照、`npm create tauri-app` 產生且未修改的檔案、圖示）。
+- **不計入**（但要列在回報中）：`pnpm-lock.yaml`、`Cargo.lock`、`docs/STATUS.md`、自動產生的檔案（字型 woff2、建置產物、測試快照、`create-tauri-app` 產生且未修改的檔案、圖示）。
 - 目標每個 Commit 3 支到 8 支；少於 3 支沒關係，不要為了湊數加檔案。
 
 ## Commit 規範
@@ -108,7 +108,7 @@ feat: 解析 ps 輸出並判斷前景程式與類型
 
 ## 技術與慣例
 
-- 套件管理：npm；前端建置 Vite；測試：前端 Vitest、Rust `cargo test`。
+- 套件管理：pnpm（不使用 npm）；前端建置 Vite；測試：前端 Vitest、Rust `cargo test`。
 - Rust：tokio、serde／serde_json、notify、plist、window-vibrancy、objc2 系列（NSScreen、NSWorkspace 等）；M6 加入 tokio-tungstenite、prost。
 - 前端狀態集中於單一 Zustand store（`src/store/useCue.ts`），所有 Session 狀態更新經由統一函式。
 - Rust 端是工作階段狀態的單一真相，前端透過 Tauri IPC（`invoke`、`emit`）同步。
@@ -152,10 +152,10 @@ docs/  scripts/  install.sh  uninstall.sh
 
 | 指令 | 用途 | 可用時機 |
 |---|---|---|
-| `npm run tauri dev` | 開發預覽 | 1-1-01 完成後 |
-| `npm test` | 前端 Vitest | 1-1-02 完成後 |
+| `pnpm tauri dev` | 開發預覽 | 1-1-01 完成後 |
+| `pnpm test` | 前端 Vitest | 1-1-02 完成後 |
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Rust 單元測試 | 1-1-01 完成後 |
-| `npm run verify` | cargo check + clippy + cargo test + 前端 build + test（+ 樣式檢查） | 1-1-04 完成後 |
+| `pnpm verify` | cargo check + clippy + cargo test + 前端 build + test（+ 樣式檢查） | 1-1-04 完成後 |
 | `cargo run --manifest-path src-tauri/Cargo.toml --example probe_discover` | 終端機探索探針 | 1-2-02 完成後 |
-| `npm run lint:style` | 檢查元件中的硬編碼顏色／字型／圓角 | 4-1-05 完成後 |
-| `npm run tauri build` | 本機打包 | 1-1-01 完成後 |
+| `pnpm lint:style` | 檢查元件中的硬編碼顏色／字型／圓角 | 4-1-05 完成後 |
+| `pnpm tauri build` | 本機打包 | 1-1-01 完成後 |

@@ -35,8 +35,8 @@
   - `parts.tsx`：可重用的部件（頭、臉部表情、軀幹、手臂、桌子、椅子、筆電、陶杯、紙張），每個部件以 `<g>` 分組並預留 `className` 供 6-2 動畫掛載（例如 `char-arm-left`、`char-head`、`char-steam`）。路徑以略帶不規則的曲線繪製，柔和色塊稍微錯位於墨線（手繪套色感）。
   - `Character.tsx`：`<Character status=... />`，viewBox 固定（例如 `0 0 160 120`），`role="img"` 加 `aria-label`；本 Commit 只實作 `idle`，其他狀態暫時也顯示 idle。
   - `DeskCard` 放入角色（卡片上半部），下方保留標籤、類型、燈號、位置提示。
-  - **不得**出現任何硬編碼顏色（`npm run lint:style` 必須通過）；不使用點陣圖、像素風或 emoji。
-- **驗證**：`npm run verify`；本機寬版下切換 `paper`、`roast`、`blueprint`、`brutal`、`Catppuccin Latte` 等主題截圖給使用者。
+  - **不得**出現任何硬編碼顏色（`pnpm lint:style` 必須通過）；不使用點陣圖、像素風或 emoji。
+- **驗證**：`pnpm verify`；本機寬版下切換 `paper`、`roast`、`blueprint`、`brutal`、`Catppuccin Latte` 等主題截圖給使用者。
 
 ### 👤 6-1-H1 確認角色風格
 - Claude 會提供 idle 角色在數個主題下的截圖。請確認風格（線條、比例、表情、色塊感），或提出修改意見。

@@ -43,7 +43,7 @@
     - 最後 `open` 啟動 App，並印出 README「Hook 設定」段落網址（`https://github.com/<OWNER>/<REPO>#hook-設定`）；**不自動修改使用者的設定檔**。
     - 同一支腳本重跑即為更新。
   - `002-release.md`：記錄 OWNER／REPO、Bundle ID、最低系統版本。
-- **驗證**：`bash -n install.sh`、`shellcheck install.sh`；以本機 `npm run tauri build` 產物手動打包 zip＋sha256，設定暫時環境變數（例如 `CUE_DOWNLOAD_BASE=file://…`，僅供測試、README 不記載）跑一次完整流程。
+- **驗證**：`bash -n install.sh`、`shellcheck install.sh`；以本機 `pnpm tauri build` 產物手動打包 zip＋sha256，設定暫時環境變數（例如 `CUE_DOWNLOAD_BASE=file://…`，僅供測試、README 不記載）跑一次完整流程。
 
 ### 8-1-02 feat: uninstall.sh
 - **UI**：否
@@ -61,11 +61,11 @@
 - **預計檔案**（2）：`.github/workflows/release.yml`、`.github/workflows/ci.yml`
 - **實作重點**：
   - `release.yml`：`on: push: tags: ['v*']`；`runs-on: macos-latest`；`permissions: contents: write`。
-    - 安裝 Node（LTS，`npm ci`）、Rust stable 並加入 `aarch64-apple-darwin`、`x86_64-apple-darwin` 兩個 target。
-    - `npm run tauri build -- --target universal-apple-darwin`。
+    - 安裝 Node（LTS）與 pnpm（`pnpm install --frozen-lockfile`）、Rust stable 並加入 `aarch64-apple-darwin`、`x86_64-apple-darwin` 兩個 target。
+    - `pnpm tauri build --target universal-apple-darwin`。
     - 以 `ditto -c -k --keepParent "…/Cue.app" Cue-macos-universal.zip` 壓縮；`shasum -a 256 Cue-macos-universal.zip > Cue-macos-universal.zip.sha256`（格式需能被 `shasum -a 256 -c` 驗證）。
     - 上傳到該版 GitHub Release（以 `gh release create`／`gh release upload`，使用 `GITHUB_TOKEN`；避免引入不必要的第三方 action）。
     - **不使用 Apple Developer ID 簽章與公證**。
-  - `ci.yml`：push／PR 時在 macOS runner 跑 `npm ci` 與 `npm run verify`（不打包），確保主幹健康。
+  - `ci.yml`：push／PR 時在 macOS runner 跑 `pnpm install --frozen-lockfile` 與 `pnpm verify`（不打包），確保主幹健康。
   - 所有第三方 action 以完整 commit SHA 固定版本。
 - **驗證**：`actionlint`（若已安裝）或以 YAML 解析檢查；實際執行於 8-2-H1。

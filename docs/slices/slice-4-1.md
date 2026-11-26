@@ -15,7 +15,7 @@
 
 - `src/themes/builtin.ts` 的 8 套風格主題數值與下方規格表完全一致。
 - 對比度自動化測試：所有主題的 `--text-primary`、`--text-muted` 對 `--bg-base`，以及 `--on-accent` 對 `--accent`，皆 ≥ 4.5:1。
-- 斷網時所有主題字型正常；`npm run lint:style` 找不到元件中的硬編碼顏色／字型／圓角。
+- 斷網時所有主題字型正常；`pnpm lint:style` 找不到元件中的硬編碼顏色／字型／圓角。
 
 ---
 
@@ -135,7 +135,7 @@ SYS_MONO  = ui-monospace, "SF Mono", Menlo, monospace
   - `derive.ts`：`deriveTheme({ id, name, background, foreground, ansi[16] }, group)` 依上方推導規則產生 `ThemeDef`。
   - `classic.ts`：8 套官方色值＋來源網址註解，透過 `derive.ts` 產生。
   - `contrast.test.ts`（**規格要求的自動化測試**）：對所有風格主題與經典配色檢查 `--text-primary`、`--text-muted` 對 `--bg-base`、`--on-accent` 對 `--accent` ≥ 4.5:1。半透明的 `--bg-surface` 等不列入。**若規格表中的內建風格主題本身不達標，不要私自修改數值，停下回報給使用者決定。**
-- **驗證**：`npm test`。
+- **驗證**：`pnpm test`。
 
 ### 👤 4-1-H1 同意下載 OFL 字型檔
 - Claude 會列出要下載的字型檔：Bodoni Moda（600/700）、Cormorant Garamond（600/700）、Barlow（400/500/600）、Barlow Condensed（600/700）、Jost（400/500/700）、Manrope（400/600/700）、Bricolage Grotesque（500/700/800），來源（Google Fonts 官方 GitHub `google/fonts` 的 `ofl/` 目錄或各字型官方 repo）、授權（SIL OFL 1.1）與預估大小，以及轉成 woff2 所需的工具（例如 `fonttools`）。
@@ -149,7 +149,7 @@ SYS_MONO  = ui-monospace, "SF Mono", Menlo, monospace
   - `fonts.css`：`@font-face`（`font-display: swap`，`src: url(...)` 為相對路徑，經 Vite 打包為 `'self'`）。
   - `LICENSES.md`：各字型名稱、著作權聲明、OFL 1.1 全文或連結（README 第三方授權清單在 8-2-01 引用）。
   - **禁止任何遠端字型**。
-- **驗證**：`npm run build` 後 `dist/assets` 含 woff2；斷網執行 `npm run tauri dev`，DevTools Network 無對外請求，暫時把標題字型切成 Bodoni Moda 確認顯示正確後還原。
+- **驗證**：`pnpm build` 後 `dist/assets` 含 woff2；斷網執行 `pnpm tauri dev`，DevTools Network 無對外請求，暫時把標題字型切成 Bodoni Moda 確認顯示正確後還原。
 
 ### 4-1-04 feat: 主題服務：套用、預覽與提交
 - **UI**：否
@@ -175,4 +175,4 @@ SYS_MONO  = ui-monospace, "SF Mono", Menlo, monospace
   - 違規時列出檔案與行號，exit 1。
   - `package.json` 加 `"lint:style"`；`verify.sh` 已會自動執行。
   - 若既有元件有違規，在本 Commit 一併修正（計入檔案數；超過上限就拆 `4-1-05a`／`b`）。
-- **驗證**：`npm run lint:style` 通過；暫時在元件加 `#fff` 確認會失敗後還原。
+- **驗證**：`pnpm lint:style` 通過；暫時在元件加 `#fff` 確認會失敗後還原。

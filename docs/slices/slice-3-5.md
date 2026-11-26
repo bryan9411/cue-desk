@@ -19,7 +19,7 @@
 - 同目錄開啟 2 個 AI 時顯示防呆提醒與 SVG 警示徽章。
 - `git switch` 後 1 秒內分支徽章更新；monorepo 子資料夾、worktree `.git` 檔、Detached HEAD、事後 `git init` 都顯示正確。
 - 重開 Cue 後工作區與自訂標籤仍在。
-- `npm run verify` 通過。
+- `pnpm verify` 通過。
 
 ---
 
@@ -47,7 +47,7 @@
   - **拖到工作區清單**：呼叫 `classify_paths(paths)` command（Rust 以 `metadata().is_dir()` 判斷），資料夾逐一 `add_workspace`；混入的檔案忽略並提示。
   - **拖到工作階段節點**：懸停時先在前端依 store 狀態與 capabilities 預判，不可派工時節點顯示 `DropHint`（拒絕原因文字，主題變數著色）；放下時呼叫 `dispatch_files`，以後端結果為準並顯示原因。
   - 拖到其他地方：不做任何事。
-- **驗證**：`npm run build`；本機依「完成條件」中的拖檔情境逐一測試（Retina 螢幕與外接螢幕各試一次落點）。
+- **驗證**：`pnpm build`；本機依「完成條件」中的拖檔情境逐一測試（Retina 螢幕與外接螢幕各試一次落點）。
 
 ### 👤 3-5-H1 M2 實機驗收
 - 依本文件「完成條件（M2 驗收）」逐條操作並回報通過／失敗。注入測試請先確認 `/tmp/pwned` 不存在，測試後再檢查一次。

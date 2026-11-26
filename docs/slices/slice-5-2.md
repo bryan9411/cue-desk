@@ -21,7 +21,7 @@
 - Cue 未執行時執行同一指令會在 1 秒內靜默結束（`exit 0`），且 stdout 為空。
 - 以 `kill -STOP` 暫停 Cue 時執行同一指令，1 秒內逾時結束、不卡住。
 - 實際在 Claude Code 與 Gemini CLI 設定 Hook 後，送出提示、等待授權、完成三種狀態都正確顯示。
-- `npm run verify` 通過。
+- `pnpm verify` 通過。
 
 ---
 
@@ -39,7 +39,7 @@
 - **UI**：否
 - **預計檔案**（6）：`src-tauri/Cargo.toml`、`package.json`、`src-tauri/src/notify.rs`、`src-tauri/capabilities/default.json`、`src-tauri/src/lib.rs`、`src-tauri/src/registry.rs`
 - **實作重點**：
-  - 加入 `tauri-plugin-notification`，**Rust 與 npm 兩端都鎖定 001 決策中確認支援 macOS 桌面點擊回報的精確版本**（`=x.y.z`）；capability 只加通知所需的最小權限。
+  - 加入 `tauri-plugin-notification`，**Rust 與前端兩端都鎖定 001 決策中確認支援 macOS 桌面點擊回報的精確版本**（`=x.y.z`）；capability 只加通知所需的最小權限。
   - 狀態轉為 `waiting` 或 `done`、通知開關開啟、且主視窗**不在前景**（`is_focused()` 為 false）時發送：標題＝工作區名稱（未歸類時為「未歸類」）、內容＝「<標籤或名稱>：等你拍板」／「<標籤或名稱>：大功告成」；附帶 sessionId 作為識別。
   - 點擊通知（`Notification::on_action` 或 001 決定的替代方案）→ 呼叫與 `focus_session` 相同的聚焦流程（含 `done` → `idle`）。
   - 首次發送前請求通知授權；被拒時不重複詢問。

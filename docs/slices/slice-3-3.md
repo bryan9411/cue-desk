@@ -32,7 +32,7 @@
   - `RenameField`：行內輸入框，Enter 確認、Esc 取消、失焦確認。
   - **未歸類區**：每列加「＋ 設為新工作區」與「忽略」兩個按鈕（只有這兩個操作）。
   - `api.ts` 補上 3-1／3-2 的所有 command 包裝。
-- **驗證**：`npm run build`；本機逐項操作選單；切到 Terminal.app 後備模式確認停用項目與說明。
+- **驗證**：`pnpm build`；本機逐項操作選單；切到 Terminal.app 後備模式確認停用項目與說明。
 
 ### 3-3-02 feat: 建立工作階段 Modal 與多 AI 防呆
 - **UI**：是

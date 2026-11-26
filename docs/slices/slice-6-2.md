@@ -30,7 +30,7 @@
 - 視窗隱藏時暫停。
 - 窄版與寬版切換不遺失狀態。
 - 每個主題下角色配色正確。
-- `npm run verify` 通過。
+- `pnpm verify` 通過。
 
 ---
 
@@ -44,7 +44,7 @@
   - `@keyframes` 只動 `transform` 與 `opacity`（避免 layout）；設 `transform-box: fill-box` 與適當 `transform-origin` 讓部件以關節旋轉。
   - 多張卡片同時 running 時，以 `animation-delay` 依 sessionId 雜湊錯開，避免整齊劃一。
   - 光暈、流光色彩用 `--status-running`、`--accent`、`--char-*`。
-- **驗證**：本機以 `cue-notify running|waiting` 觀察；`npm run lint:style`。
+- **驗證**：本機以 `cue-notify running|waiting` 觀察；`pnpm lint:style`。
 
 ### 6-2-02 feat: done、idle 動畫與 exited 空座位
 - **UI**：是
