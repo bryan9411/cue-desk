@@ -27,6 +27,12 @@ pub enum CueError {
     Script(String),
     /// 目前的終端機後端不支援這個操作。
     Unsupported,
+    /// 工作階段已結束，無法操作。
+    SessionExited,
+    /// 找不到指定的工作區。
+    WorkspaceNotFound,
+    /// 無法加入工作區（路徑不存在或不是資料夾），內容為原因。
+    InvalidWorkspace(String),
 }
 
 impl CueError {
@@ -40,6 +46,9 @@ impl CueError {
             CueError::Io(_) => "io",
             CueError::Script(_) => "script",
             CueError::Unsupported => "unsupported",
+            CueError::SessionExited => "session_exited",
+            CueError::WorkspaceNotFound => "workspace_not_found",
+            CueError::InvalidWorkspace(_) => "invalid_workspace",
         }
     }
 
@@ -86,6 +95,9 @@ impl fmt::Display for CueError {
             CueError::Io(msg) => write!(f, "無法執行 osascript：{msg}"),
             CueError::Script(msg) => write!(f, "終端機腳本錯誤：{msg}"),
             CueError::Unsupported => write!(f, "目前的終端機不支援這個操作"),
+            CueError::SessionExited => write!(f, "這個工作階段已結束"),
+            CueError::WorkspaceNotFound => write!(f, "找不到指定的工作區"),
+            CueError::InvalidWorkspace(msg) => write!(f, "無法加入工作區：{msg}"),
         }
     }
 }
@@ -150,5 +162,12 @@ mod tests {
         let json = serde_json::to_value(CueError::Unsupported).unwrap();
         assert_eq!(json["kind"], "unsupported");
         assert_eq!(json["message"], "目前的終端機不支援這個操作");
+
+        let json = serde_json::to_value(CueError::SessionExited).unwrap();
+        assert_eq!(json["kind"], "session_exited");
+
+        let json = serde_json::to_value(CueError::InvalidWorkspace("不是資料夾".into())).unwrap();
+        assert_eq!(json["kind"], "invalid_workspace");
+        assert_eq!(json["message"], "無法加入工作區：不是資料夾");
     }
 }
