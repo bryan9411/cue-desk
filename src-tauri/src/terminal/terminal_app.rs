@@ -3,19 +3,26 @@
 //! 探索與聚焦都以 `scripts/` 中的固定腳本執行，變動資料（視窗 ID、tty）只經由 argv 傳入。
 //! 以 Cmd+T 開的原生分頁在 AppleScript 中是獨立的視窗，
 //! 因此每個分頁的身分為「視窗 ID + 正規化後 tty」。
+//! 建立工作階段只支援開新視窗：AppleScript 無法在既有視窗開分頁或分割。
+
+use std::time::Duration;
 
 use crate::error::CueError;
 use crate::model::{normalize_tty, Bounds, DiscoveredSession, SessionKey};
 use crate::osascript;
+use crate::shell;
 
 use super::detect::{self, TerminalApp};
-use super::{scripts, Capabilities, TerminalBackend};
+use super::{scripts, Capabilities, CreateSpec, CreatedSession, OpenMode, TerminalBackend};
 
 /// 探索腳本每筆紀錄的欄位數。
 const DISCOVER_FIELDS: usize = 9;
 
 /// 聚焦腳本找到分頁時的回傳值。
 const FOCUS_OK: &str = "ok";
+
+/// 建立工作階段的逾時：Terminal.app 未執行時要先冷啟動，且腳本會等新分頁取得 tty。
+const CREATE_TIMEOUT: Duration = Duration::from_secs(20);
 
 /// Terminal.app 後端。
 #[derive(Debug, Default, Clone, Copy)]
@@ -73,6 +80,25 @@ impl TerminalBackend for TerminalAppBackend {
             Err(CueError::ObjectNotFound)
         }
     }
+
+    fn create(&self, spec: &CreateSpec) -> Result<CreatedSession, CueError> {
+        if spec.mode != OpenMode::NewWindow {
+            return Err(CueError::Unsupported);
+        }
+        // 路徑不安全時在執行腳本（啟動 Terminal.app）之前就拒絕。
+        let command = shell::launch_command(spec.kind, &spec.workspace_path)?;
+        let output = osascript::run_with_timeout(scripts::TERMINAL_APP_CREATE, &[&command], CREATE_TIMEOUT)?;
+        parse_created(&output)
+    }
+}
+
+/// 解析建立腳本回傳的「window id ␟ tty」。
+fn parse_created(output: &str) -> Result<CreatedSession, CueError> {
+    let invalid = || CueError::Script("無法辨識 Terminal.app 新分頁的視窗與 tty".into());
+    let (window, tty) = output.trim_end_matches('\n').split_once(osascript::FIELD_SEP).ok_or_else(invalid)?;
+    let window_id = window.trim().parse::<i64>().ok().filter(|id| *id > 0).ok_or_else(invalid)?;
+    let tty = normalize_tty(tty).ok_or_else(invalid)?;
+    Ok(CreatedSession { key: SessionKey::TerminalApp { window_id, tty }, zsh: None })
 }
 
 /// 解析探索腳本的輸出。欄位數不符、數值無法解析或 tty 無效的紀錄會略過。
@@ -109,6 +135,7 @@ fn parse_row(fields: &[String]) -> Option<DiscoveredSession> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::shell::SessionKindToCreate;
 
     const FS: char = '\x1f';
     const RS: char = '\x1e';
@@ -230,6 +257,88 @@ mod tests {
         assert!(!caps.split && !caps.new_tab && !caps.type_text_no_enter && !caps.rename);
         assert!(caps.close_pane);
         assert!(!caps.precise_tabs);
+    }
+
+    #[test]
+    fn parses_created_window_and_tty() {
+        let created = parse_created(&row(&["11955", "/dev/ttys026"])).unwrap();
+        assert_eq!(created.key, SessionKey::TerminalApp { window_id: 11955, tty: "ttys026".into() });
+        assert_eq!(created.zsh, None);
+        assert_eq!(parse_created(&(row(&["7", "/dev/ttys001"]) + "\n")).unwrap().key.as_id(), "terminal:7:ttys001");
+    }
+
+    #[test]
+    fn rejects_unexpected_create_output() {
+        for out in [
+            String::new(),
+            "11955".into(),
+            row(&["11955", ""]),
+            row(&["x", "/dev/ttys001"]),
+            row(&["0", "/dev/ttys001"]),
+            row(&["-3", "/dev/ttys001"]),
+            row(&["5", "/dev/console"]),
+            row(&["5", "/dev/ttys001", "extra"]),
+        ] {
+            assert!(matches!(parse_created(&out), Err(CueError::Script(_))), "應拒絕 {out:?}");
+        }
+    }
+
+    #[test]
+    fn create_supports_only_new_window_and_rejects_unsafe_path() {
+        let backend = TerminalAppBackend::new();
+        let spec = |mode, path: &str| CreateSpec {
+            workspace_path: path.into(),
+            kind: SessionKindToCreate::Claude,
+            label: None,
+            mode,
+            target_window: Some(1),
+        };
+        for mode in [OpenMode::NewTab, OpenMode::AiTopZshBottom, OpenMode::AiLeftZshRight] {
+            assert_eq!(backend.create(&spec(mode, "/tmp")), Err(CueError::Unsupported), "{mode:?}");
+        }
+        assert_eq!(backend.create(&spec(OpenMode::NewWindow, "/tmp/a\nrm -rf ~")), Err(CueError::UnsafePath));
+    }
+
+    /// 本機手動：`cargo test -- --ignored terminal_app_create --nocapture`
+    /// 在含注入字元的暫存工作區開新視窗建立 zsh 工作階段，檢查探索結果，
+    /// 且路徑中的 `$(touch /tmp/pwned)` 沒有被執行。新視窗的目錄需目視確認（`pwd`）。
+    #[test]
+    #[ignore = "操作本機 Terminal.app"]
+    fn terminal_app_create_local() {
+        use std::path::Path;
+        use std::time::Duration;
+
+        let pwned = Path::new("/tmp/pwned");
+        let _ = std::fs::remove_file(pwned);
+        assert!(!pwned.exists(), "測試前無法移除 /tmp/pwned");
+
+        // 保留暫存資料夾，新視窗 cd 進去後才能目視確認目錄。
+        let ws = tempfile::tempdir().unwrap().keep().join("A's 專案 $(touch /tmp/pwned) \"x\"");
+        std::fs::create_dir_all(&ws).unwrap();
+
+        let backend = TerminalAppBackend::new();
+        let spec = CreateSpec {
+            workspace_path: ws.clone(),
+            kind: SessionKindToCreate::Zsh,
+            label: None,
+            mode: OpenMode::NewWindow,
+            target_window: None,
+        };
+        let created = backend.create(&spec).expect("建立失敗");
+        assert_eq!(created.zsh, None);
+
+        std::thread::sleep(Duration::from_millis(500));
+        let found = backend
+            .discover()
+            .expect("探索失敗")
+            .into_iter()
+            .find(|s| s.key == created.key)
+            .unwrap_or_else(|| panic!("探索不到新分頁 {}", created.key));
+        println!("新視窗：{} | 視窗 #{} | {}", found.key, found.window_index, found.tty);
+
+        std::thread::sleep(Duration::from_secs(2));
+        assert!(!pwned.exists(), "注入的指令被執行了");
+        println!("工作區：{}", ws.display());
     }
 
     /// 本機手動：`cargo test -- --ignored terminal_app --nocapture`

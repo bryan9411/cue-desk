@@ -17,11 +17,17 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 
 use crate::model::SessionKind;
+use crate::terminal::OpenMode;
 
 /// 目前的設定檔格式版本。
 pub const CONFIG_VERSION: u32 = 1;
 /// 寫檔合併的預設等待時間。
 pub const DEFAULT_DEBOUNCE: Duration = Duration::from_millis(300);
+
+/// `preferences` 中記錄上次建立工作階段所用開啟方式的鍵。
+const PREF_LAST_OPEN_MODE: &str = "lastOpenMode";
+/// `preferences` 中使用者指定的預設開啟方式的鍵。
+const PREF_DEFAULT_OPEN_MODE: &str = "defaultOpenMode";
 
 const CONFIG_DIR_NAME: &str = ".cue";
 const CONFIG_FILE_NAME: &str = "config.json";
@@ -81,6 +87,34 @@ impl CueConfig {
             }
             n = n.wrapping_add(1);
         }
+    }
+
+    /// 記住這次建立工作階段所用的開啟方式。回傳是否有變動（沒變動就不必寫檔）。
+    pub fn set_last_open_mode(&mut self, mode: OpenMode) -> bool {
+        let value = serde_json::to_value(mode).unwrap_or(Value::Null);
+        if self.preferences.get(PREF_LAST_OPEN_MODE) == Some(&value) {
+            return false;
+        }
+        self.preferences.insert(PREF_LAST_OPEN_MODE.into(), value);
+        true
+    }
+
+    /// 建立工作階段 Modal 的預設開啟方式：有指定 `defaultOpenMode` 時用它，否則用上次的。
+    /// 手動編輯成不認得的值時視為沒有設定。
+    pub fn preferred_open_mode(&self) -> Option<OpenMode> {
+        let read = |key: &str| {
+            self.preferences.get(key).and_then(|v| serde_json::from_value::<OpenMode>(v.clone()).ok())
+        };
+        read(PREF_DEFAULT_OPEN_MODE).or_else(|| read(PREF_LAST_OPEN_MODE))
+    }
+
+    /// 把使用者標籤綁到節點。空白標籤不寫入。
+    pub fn set_node_label(&mut self, node_id: String, label: &str) {
+        let label = label.trim();
+        if label.is_empty() {
+            return;
+        }
+        self.nodes.entry(node_id).or_default().label = Some(label.to_owned());
     }
 }
 
@@ -474,6 +508,37 @@ mod tests {
             thread::sleep(Duration::from_millis(5));
         }
         assert_eq!(load(&path), CueConfig::default());
+    }
+
+    #[test]
+    fn open_mode_preference_prefers_default_over_last() {
+        let mut c = CueConfig::default();
+        assert_eq!(c.preferred_open_mode(), None);
+
+        assert!(c.set_last_open_mode(OpenMode::NewTab));
+        assert!(!c.set_last_open_mode(OpenMode::NewTab), "相同值不算變動");
+        assert_eq!(c.preferences["lastOpenMode"], json!("newTab"));
+        assert_eq!(c.preferred_open_mode(), Some(OpenMode::NewTab));
+
+        c.preferences.insert("defaultOpenMode".into(), json!("aiLeftZshRight"));
+        assert_eq!(c.preferred_open_mode(), Some(OpenMode::AiLeftZshRight));
+        assert!(c.set_last_open_mode(OpenMode::NewWindow));
+        assert_eq!(c.preferred_open_mode(), Some(OpenMode::AiLeftZshRight));
+
+        // 不認得的值視為沒有設定
+        c.preferences.insert("defaultOpenMode".into(), json!("splitEverywhere"));
+        assert_eq!(c.preferred_open_mode(), Some(OpenMode::NewWindow));
+        c.preferences.insert("lastOpenMode".into(), json!(3));
+        assert_eq!(c.preferred_open_mode(), None);
+    }
+
+    #[test]
+    fn node_label_is_trimmed_and_blank_is_skipped() {
+        let mut c = CueConfig::default();
+        c.set_node_label("iterm2:A".into(), "  後端  ");
+        c.set_node_label("iterm2:B".into(), "   ");
+        assert_eq!(c.nodes["iterm2:A"].label.as_deref(), Some("後端"));
+        assert!(!c.nodes.contains_key("iterm2:B"));
     }
 
     #[test]

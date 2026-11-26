@@ -27,6 +27,7 @@ pub fn run() {
             commands::focus_session,
             commands::add_workspace,
             commands::set_workspace_collapsed,
+            commands::create_session,
         ])
         .setup(|app| {
             discovery::spawn(app.handle().clone());

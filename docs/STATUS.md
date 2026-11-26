@@ -62,11 +62,11 @@
 
 ## slice-3 建立、管理、防呆與拖檔派工（M2）
 
-- [ ] **slice-3-1 安全指令層與建立工作階段** → `docs/slices/slice-3-1.md`
+- [x] **slice-3-1 安全指令層與建立工作階段** → `docs/slices/slice-3-1.md`
   - [x] 3-1-01 feat: shell 單引號跳脫與 AI 指令列舉
   - [x] 3-1-02 feat: 開啟方式與專屬視窗判定
   - [x] 3-1-03 feat: iTerm2 建立工作階段（四種開啟方式）
-  - [ ] 3-1-04 feat: Terminal.app 建立工作階段與 create 指令
+  - [x] 3-1-04 feat: Terminal.app 建立工作階段與 create 指令
 - [ ] **slice-3-2 工作階段管理** → `docs/slices/slice-3-2.md`
   - [ ] 3-2-01 feat: 就地補開同工作區 Zsh
   - [ ] 3-2-02 feat: 重新命名與關閉工作階段

@@ -9,7 +9,10 @@ use tauri::{AppHandle, Manager, State};
 use crate::config::{CueConfig, Workspace};
 use crate::discovery;
 use crate::error::CueError;
+use crate::layout;
+use crate::shell::SessionKindToCreate;
 use crate::state::{lock, AppState, Snapshot};
+use crate::terminal::{Capabilities, CreateSpec, CreatedSession, OpenMode};
 
 /// 目前的完整狀態。
 #[tauri::command]
@@ -35,6 +38,75 @@ pub async fn focus_session(app: AppHandle, id: String) -> Result<(), CueError> {
         .map_err(|e| CueError::Io(format!("聚焦工作異常結束：{e}")))??;
     lock(&state.registry).record_focus(window_id);
     Ok(())
+}
+
+/// 在工作區建立工作階段，回傳新節點的 id（分割開啟方式為 AI 窗格）。
+///
+/// `kind` 只接受 `"claude"`／`"gemini"`／`"zsh"`，其他值在反序列化時就被拒絕；
+/// 後端不支援的開啟方式回傳 `Unsupported`，不會改用其他方式。
+#[tauri::command]
+pub async fn create_session(
+    app: AppHandle,
+    workspace_id: String,
+    kind: SessionKindToCreate,
+    label: Option<String>,
+    mode: OpenMode,
+) -> Result<String, CueError> {
+    let state = app.state::<AppState>();
+    let backend = state.backend();
+    check_mode(backend.capabilities(), mode)?;
+
+    let workspace_path = {
+        let config = lock(&state.config);
+        let ws = config.workspaces.iter().find(|w| w.id == workspace_id).ok_or(CueError::WorkspaceNotFound)?;
+        ws.path.clone()
+    };
+    if !workspace_path.is_dir() {
+        return Err(CueError::InvalidWorkspace("工作區資料夾不存在".into()));
+    }
+    let target_window = match mode {
+        OpenMode::NewWindow => None,
+        _ => layout::resolve_new_tab_target(&workspace_id, &lock(&state.registry)),
+    };
+
+    let spec = CreateSpec { workspace_path, kind, label, mode, target_window };
+    let (created, spec) = tauri::async_runtime::spawn_blocking(move || {
+        let created = backend.create(&spec);
+        (created, spec)
+    })
+    .await
+    .map_err(|e| CueError::Io(format!("建立工作階段的工作異常結束：{e}")))?;
+    let created = created?;
+
+    {
+        let mut config = lock(&state.config);
+        record_created(&mut config, &created, &spec);
+        state.save_config(&config);
+    }
+    state.trigger_discovery();
+    Ok(created.key.as_id())
+}
+
+/// 確認後端支援這個開啟方式。開新視窗是所有後端都支援的基本操作。
+fn check_mode(caps: Capabilities, mode: OpenMode) -> Result<(), CueError> {
+    let supported = match mode {
+        OpenMode::NewWindow => true,
+        OpenMode::NewTab => caps.new_tab,
+        OpenMode::AiTopZshBottom | OpenMode::AiLeftZshRight => caps.new_tab && caps.split,
+    };
+    if supported {
+        Ok(())
+    } else {
+        Err(CueError::Unsupported)
+    }
+}
+
+/// 建立成功後寫回設定：標籤立即綁到新節點（不等下一輪探索），並記住這次的開啟方式。
+fn record_created(config: &mut CueConfig, created: &CreatedSession, spec: &CreateSpec) {
+    if let Some(label) = &spec.label {
+        config.set_node_label(created.key.as_id(), label);
+    }
+    config.set_last_open_mode(spec.mode);
 }
 
 /// 加入工作區：驗證為資料夾、取 realpath、去重。回傳工作區 id（已存在時回傳既有的 id）。
@@ -100,6 +172,55 @@ fn resolve_dir(path: &Path) -> Result<PathBuf, CueError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::model::SessionKey;
+
+    #[test]
+    fn mode_must_match_capabilities() {
+        let none = Capabilities::default();
+        assert_eq!(check_mode(none, OpenMode::NewWindow), Ok(()));
+        for mode in [OpenMode::NewTab, OpenMode::AiTopZshBottom, OpenMode::AiLeftZshRight] {
+            assert_eq!(check_mode(none, mode), Err(CueError::Unsupported), "{mode:?}");
+        }
+
+        let tabs = Capabilities { new_tab: true, ..Capabilities::default() };
+        assert_eq!(check_mode(tabs, OpenMode::NewTab), Ok(()));
+        assert_eq!(check_mode(tabs, OpenMode::AiTopZshBottom), Err(CueError::Unsupported));
+
+        let full = Capabilities { new_tab: true, split: true, ..Capabilities::default() };
+        for mode in [OpenMode::NewWindow, OpenMode::NewTab, OpenMode::AiTopZshBottom, OpenMode::AiLeftZshRight] {
+            assert_eq!(check_mode(full, mode), Ok(()), "{mode:?}");
+        }
+    }
+
+    #[test]
+    fn created_session_binds_label_and_remembers_mode() {
+        let mut config = CueConfig::default();
+        let created = CreatedSession {
+            key: SessionKey::Iterm2 { unique_id: "AI".into() },
+            zsh: Some(SessionKey::Iterm2 { unique_id: "ZSH".into() }),
+        };
+        let spec = CreateSpec {
+            workspace_path: PathBuf::from("/tmp"),
+            kind: SessionKindToCreate::Claude,
+            label: Some(" 前端 ".into()),
+            mode: OpenMode::AiTopZshBottom,
+            target_window: None,
+        };
+        record_created(&mut config, &created, &spec);
+        assert_eq!(config.nodes["iterm2:AI"].label.as_deref(), Some("前端"));
+        assert!(!config.nodes.contains_key("iterm2:ZSH"), "標籤只綁 AI 窗格");
+        assert_eq!(config.preferred_open_mode(), Some(OpenMode::AiTopZshBottom));
+
+        let created = CreatedSession {
+            key: SessionKey::TerminalApp { window_id: 7, tty: "ttys001".into() },
+            zsh: None,
+        };
+        let spec = CreateSpec { label: None, mode: OpenMode::NewWindow, ..spec };
+        record_created(&mut config, &created, &spec);
+        assert!(!config.nodes.contains_key("terminal:7:ttys001"));
+        assert_eq!(config.preferred_open_mode(), Some(OpenMode::NewWindow));
+    }
 
     #[test]
     fn adds_workspace_with_realpath_and_folder_name() {

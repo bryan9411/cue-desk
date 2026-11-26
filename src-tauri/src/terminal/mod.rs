@@ -26,6 +26,8 @@ pub mod scripts {
         include_str!("scripts/terminal_app_discover.applescript");
     /// 聚焦 Terminal.app 的指定分頁；argv：window id、tty（`/dev/ttysNNN`）。找到回傳 `ok`，否則空字串。
     pub const TERMINAL_APP_FOCUS: &str = include_str!("scripts/terminal_app_focus.applescript");
+    /// Terminal.app 開新視窗並送出指令；argv：指令。回傳新視窗的 window id 與 tty（`\x1f` 分隔）。
+    pub const TERMINAL_APP_CREATE: &str = include_str!("scripts/terminal_app_create.applescript");
     /// iTerm2 開新視窗並送出指令；argv：指令。回傳新窗格的 unique ID。
     pub const ITERM2_CREATE_WINDOW: &str =
         include_str!("scripts/iterm2_create_window.applescript");
@@ -252,5 +254,6 @@ mod tests {
         assert!(!scripts::ITERM2_CREATE_WINDOW.is_empty());
         assert!(!scripts::ITERM2_CREATE_TAB.is_empty());
         assert!(!scripts::ITERM2_CREATE_SPLIT.is_empty());
+        assert!(!scripts::TERMINAL_APP_CREATE.is_empty());
     }
 }
