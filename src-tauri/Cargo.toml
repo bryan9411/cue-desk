@@ -23,6 +23,11 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"
 tauri-plugin-dialog = "2"
 # MIT OR Apache-2.0；以 proc_pidinfo 取前景程式 cwd
 libc = "0.2"
+# 以下三者版本與 Tauri 已依賴的相同；MIT／MIT／Zlib OR Apache-2.0 OR MIT
+# 偵測終端機安裝與執行狀態（NSWorkspace、NSRunningApplication）
+objc2 = { version = "0.6", default-features = false, features = ["std"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSArray"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSWorkspace", "NSRunningApplication"] }
 
 [dev-dependencies]
 # MIT OR Apache-2.0；歸屬測試建立暫存目錄

@@ -676,6 +676,9 @@ name = "cue"
 version = "0.1.2"
 dependencies = [
  "libc",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
  "serde",
  "serde_json",
  "tauri",

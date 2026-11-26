@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 use crate::error::CueError;
 use crate::model::{Bounds, DiscoveredSession, ScreenIndex, SessionKey, SessionKind, WindowId};
 
+pub mod detect;
+
 /// 固定的 AppleScript 腳本原文。變動資料一律經由 `on run argv` 傳入。
 pub mod scripts {
     /// 列出 iTerm2 所有窗格；iTerm2 未執行時回傳空字串。
