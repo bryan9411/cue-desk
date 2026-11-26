@@ -25,4 +25,4 @@ npm-debug.log*
 *.swp
 
 # Claude Code 本機設定
-.claude/settings.local.json
+/.codegraph/
