@@ -76,11 +76,11 @@
   - [x] 3-3-01 feat: 右鍵選單與節點操作
   - [x] 3-3-02a feat: 快照帶出建立工作階段的預設開啟方式
   - [x] 3-3-02b feat: 建立工作階段 Modal 與多 AI 防呆
-- [ ] **slice-3-4 Git 分支監聽** → `docs/slices/slice-3-4.md`
+- [x] **slice-3-4 Git 分支監聽** → `docs/slices/slice-3-4.md`
   - [x] 3-4-01 feat: 解析 Git 目錄與 HEAD
   - [x] 3-4-02 feat: 以 notify 監聽分支變化
   - [x] 3-4-03a feat: 前端同步分支狀態
-  - [ ] 3-4-03b feat: 側邊欄分支徽章
+  - [x] 3-4-03b feat: 側邊欄分支徽章
 - [ ] **slice-3-5 拖放與派工** → `docs/slices/slice-3-5.md`
   - [ ] 3-5-01 feat: 拖檔派工規則與不送 Enter 的文字輸入
   - [ ] 3-5-02 feat: 拖曳資料夾加入工作區與拖檔到節點

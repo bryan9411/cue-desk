@@ -88,6 +88,28 @@ export function Warning(props: IconProps) {
   );
 }
 
+/** Git 分支：主線與一條分出的支線。 */
+export function GitBranch(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="7" cy="5.5" r="2" />
+      <circle cx="7" cy="18.5" r="2" />
+      <circle cx="17" cy="7" r="2" />
+      <path d="M7 7.5v9M17 9c0 4.5-4.5 6-8.5 8.1" />
+    </Icon>
+  );
+}
+
+/** 單一 commit：線上的一個節點，用於 Detached HEAD。 */
+export function GitCommit(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M3.5 12h5M15.5 12h5" />
+    </Icon>
+  );
+}
+
 // 開啟方式示意：同一個視窗外框，以內部分隔線區分。
 
 export function LayoutWindow(props: IconProps) {

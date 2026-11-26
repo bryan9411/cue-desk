@@ -8,6 +8,7 @@ import { activeAiCount } from "../../lib/workspaceStats";
 import { ContextMenu, useContextMenu, type MenuEntry } from "../ContextMenu";
 import { ChevronDown, ChevronRight } from "../icons/Icons";
 import { WarningBadge } from "../WarningBadge";
+import { BranchBadge } from "./BranchBadge";
 import { SessionNode } from "./SessionNode";
 
 interface Props {
@@ -15,7 +16,7 @@ interface Props {
   sessions: Node[];
 }
 
-/** 工作區節點：摺疊箭頭、名稱、多 AI 警示、子節點數；收合狀態寫回設定檔，右鍵開啟操作選單。 */
+/** 工作區節點：摺疊箭頭、名稱、多 AI 警示、子節點數，第二行為分支徽章；收合狀態寫回設定檔，右鍵開啟操作選單。 */
 export function WorkspaceNode({ workspace, sessions }: Props) {
   const setLastError = useCue((s) => s.setLastError);
   const openCreateModal = useCue((s) => s.openCreateModal);
@@ -75,15 +76,20 @@ export function WorkspaceNode({ workspace, sessions }: Props) {
         aria-expanded={!collapsed}
         aria-controls={listId}
         title={workspace.path}
-        className="flex w-full items-center gap-1.5 rounded-sm px-1 py-1 text-left hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus-ring"
+        className="grid w-full grid-cols-[14px_minmax(0,1fr)_auto] items-center gap-x-1.5 gap-y-0.5 rounded-sm px-1 py-1 text-left hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus-ring"
       >
-        <Chevron size={14} className="shrink-0 text-muted" />
-        <span className="min-w-0 flex-1 truncate font-heading text-[15px] leading-5 [font-weight:var(--heading-weight)]">
+        <Chevron size={14} className="text-muted" />
+        <span className="truncate font-heading text-[15px] leading-5 [font-weight:var(--heading-weight)]">
           {workspace.name}
         </span>
-        {aiCount >= 2 && <WarningBadge count={aiCount} />}
-        <span className="shrink-0 pr-1 font-mono text-[11px] text-muted" aria-label={`${sessions.length} 個工作階段`}>
-          {sessions.length}
+        <span className="flex items-center">
+          {aiCount >= 2 && <WarningBadge count={aiCount} />}
+          <span className="pr-1 font-mono text-[11px] text-muted" aria-label={`${sessions.length} 個工作階段`}>
+            {sessions.length}
+          </span>
+        </span>
+        <span className="col-span-2 col-start-2 flex min-w-0 justify-start">
+          <BranchBadge branch={workspace.branch} detached={workspace.detached} />
         </span>
       </button>
       {menu.anchor && (

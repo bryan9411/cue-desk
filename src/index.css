@@ -17,6 +17,8 @@
   --color-accent: var(--accent);
   --color-on-accent: var(--on-accent);
   --color-focus-ring: var(--focus-ring);
+  --color-branch-badge-bg: var(--branch-badge-bg);
+  --color-branch-badge-fg: var(--branch-badge-fg);
 
   /* 狀態 */
   --color-status-running: var(--status-running);
@@ -58,6 +60,9 @@
   --accent: #d97757;
   --on-accent: #2b2620;
   --focus-ring: #d97757;
+  /* 分支徽章：主題可改為反白（填色底＋淺色字） */
+  --branch-badge-bg: transparent;
+  --branch-badge-fg: var(--text-muted);
 
   --status-running: #3a6ba5;
   --status-waiting: #b4741a;
