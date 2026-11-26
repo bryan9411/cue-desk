@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+/*
+ * 主題變數橋接：Tailwind 的色彩／字型／圓角／陰影一律指向主題 CSS Variables。
+ * 元件只使用這些 utility class 或 var(--…)，不得寫硬編碼值。
+ */
+@theme inline {
+  /* 色彩 */
+  --color-base: var(--bg-base);
+  --color-sidebar: var(--bg-sidebar);
+  --color-surface: var(--bg-surface);
+  --color-selected: var(--bg-selected);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--text-primary);
+  --color-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-focus-ring: var(--focus-ring);
+
+  /* 狀態 */
+  --color-status-running: var(--status-running);
+  --color-status-waiting: var(--status-waiting);
+  --color-status-done: var(--status-done);
+  --color-status-idle: var(--status-idle);
+  --color-status-exited: var(--status-exited);
+
+  /* 角色色板 */
+  --color-char-ink: var(--char-ink);
+  --color-char-fill: var(--char-fill);
+  --color-char-fill-2: var(--char-fill-2);
+  --color-char-paper: var(--char-paper);
+
+  /* 字型 */
+  --font-heading: var(--font-heading);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+  --font-weight-heading: var(--heading-weight);
+  --text-title: var(--title-size);
+
+  /* 造型 */
+  --radius-sm: var(--radius-sm);
+  --radius-lg: var(--radius-lg);
+  --shadow-control: var(--shadow-control);
+  --shadow-panel: var(--shadow-panel);
+}
+
+/* 暫用值：暖紙雜誌 paper，之後由主題引擎接手寫入 */
+:root {
+  --bg-base: #f5f1e8;
+  --bg-sidebar: #f5f1e8;
+  --bg-surface: #ebe4d4;
+  --bg-selected: #e2d6be;
+  --border-subtle: #d3c7b0;
+  --border-strong: #2b2620;
+  --text-primary: #2b2620;
+  --text-muted: #685d4e;
+  --accent: #d97757;
+  --on-accent: #2b2620;
+  --focus-ring: #d97757;
+
+  --status-running: #3a6ba5;
+  --status-waiting: #b4741a;
+  --status-done: #3d7a44;
+  --status-idle: #8a7f70;
+  --status-exited: #b3a893;
+
+  --font-heading: ui-serif, "New York", "Songti TC", serif;
+  --font-body: -apple-system, "SF Pro Text", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --heading-weight: 600;
+  --title-size: 20px;
+
+  --radius-sm: 6px;
+  --radius-lg: 12px;
+  --border-width: 1px;
+  --border-style: solid;
+  --shadow-control: none;
+  --shadow-panel: none;
+  --texture: none;
+  --header-rule: 3px double var(--border-strong);
+
+  --status-shape: dot;
+
+  --char-ink: var(--text-primary);
+  --char-fill: var(--accent);
+  --char-fill-2: var(--bg-selected);
+  --char-paper: var(--bg-surface);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-base);
+  background-image: var(--texture);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+}
