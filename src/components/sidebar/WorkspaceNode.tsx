@@ -4,8 +4,10 @@ import { useEffect, useId, useState } from "react";
 import { createSession, removeWorkspace, setWorkspaceCollapsed, toCueError } from "../../ipc/api";
 import { useCue } from "../../store/useCue";
 import type { CueError, SessionNode as Node, Workspace } from "../../types";
+import { activeAiCount } from "../../lib/workspaceStats";
 import { ContextMenu, useContextMenu, type MenuEntry } from "../ContextMenu";
 import { ChevronDown, ChevronRight } from "../icons/Icons";
+import { WarningBadge } from "../WarningBadge";
 import { SessionNode } from "./SessionNode";
 
 interface Props {
@@ -13,7 +15,7 @@ interface Props {
   sessions: Node[];
 }
 
-/** 工作區節點：摺疊箭頭、名稱、子節點數；收合狀態寫回設定檔，右鍵開啟操作選單。 */
+/** 工作區節點：摺疊箭頭、名稱、多 AI 警示、子節點數；收合狀態寫回設定檔，右鍵開啟操作選單。 */
 export function WorkspaceNode({ workspace, sessions }: Props) {
   const setLastError = useCue((s) => s.setLastError);
   const openCreateModal = useCue((s) => s.openCreateModal);
@@ -62,6 +64,7 @@ export function WorkspaceNode({ workspace, sessions }: Props) {
   ];
 
   const Chevron = collapsed ? ChevronRight : ChevronDown;
+  const aiCount = activeAiCount(workspace.id, sessions);
 
   return (
     <li className="pt-3 first:pt-1">
@@ -78,6 +81,7 @@ export function WorkspaceNode({ workspace, sessions }: Props) {
         <span className="min-w-0 flex-1 truncate font-heading text-[15px] leading-5 [font-weight:var(--heading-weight)]">
           {workspace.name}
         </span>
+        {aiCount >= 2 && <WarningBadge count={aiCount} />}
         <span className="shrink-0 pr-1 font-mono text-[11px] text-muted" aria-label={`${sessions.length} 個工作階段`}>
           {sessions.length}
         </span>

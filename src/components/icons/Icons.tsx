@@ -77,3 +77,51 @@ export function CueMark(props: IconProps) {
     </Icon>
   );
 }
+
+/** 警示三角形。 */
+export function Warning(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M10.7 4.6a1.5 1.5 0 0 1 2.6 0l7.4 13a1.5 1.5 0 0 1-1.3 2.2H4.6a1.5 1.5 0 0 1-1.3-2.2z" />
+      <path d="M12 9.5v4.5M12 16.75v.25" />
+    </Icon>
+  );
+}
+
+// 開啟方式示意：同一個視窗外框，以內部分隔線區分。
+
+export function LayoutWindow(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3.5" y="5" width="17" height="14" rx="1.5" />
+      <path d="M3.5 8.5h17" />
+    </Icon>
+  );
+}
+
+export function LayoutTab(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3.5" y="5" width="17" height="14" rx="1.5" />
+      <path d="M3.5 8.5h17M9.5 5v3.5M15 5v3.5" />
+    </Icon>
+  );
+}
+
+export function LayoutSplitRows(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3.5" y="5" width="17" height="14" rx="1.5" />
+      <path d="M3.5 12h17" />
+    </Icon>
+  );
+}
+
+export function LayoutSplitColumns(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3.5" y="5" width="17" height="14" rx="1.5" />
+      <path d="M12 5v14" />
+    </Icon>
+  );
+}
