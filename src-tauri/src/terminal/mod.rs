@@ -43,6 +43,13 @@ pub mod scripts {
     /// 設定 iTerm2 指定窗格的名稱；argv：unique ID、新名稱。找到回傳 `ok`，否則空字串。
     /// iTerm2 未執行時不啟動它。
     pub const ITERM2_RENAME: &str = include_str!("scripts/iterm2_rename.applescript");
+    /// 關閉 iTerm2 的指定窗格；argv：unique ID。找到回傳 `ok`，否則空字串。
+    /// iTerm2 未執行時不啟動它。
+    pub const ITERM2_CLOSE: &str = include_str!("scripts/iterm2_close.applescript");
+    /// 關閉 Terminal.app 的指定分頁；argv：window id、tty（`/dev/ttysNNN`）。
+    /// 回傳 `ok`；視窗不只 1 個分頁時回傳 `multi` 且不關閉；找不到時回傳空字串。
+    /// Terminal.app 未執行時不啟動它。
+    pub const TERMINAL_APP_CLOSE: &str = include_str!("scripts/terminal_app_close.applescript");
 }
 
 /// 後端支援的操作，前端依此停用不支援的功能。
@@ -149,6 +156,7 @@ pub trait TerminalBackend: Send + Sync {
     }
 
     /// 關閉工作階段（使用者主動操作；Cue 結束時不關閉任何工作階段）。
+    /// 程式仍在執行時交由終端機自己的確認機制，回傳 `Ok` 只代表已送出關閉。
     fn close(&self, _key: &SessionKey) -> Result<(), CueError> {
         Err(CueError::Unsupported)
     }
@@ -264,5 +272,7 @@ mod tests {
         assert!(!scripts::TERMINAL_APP_CREATE.is_empty());
         assert!(!scripts::ITERM2_SPLIT_ZSH.is_empty());
         assert!(!scripts::ITERM2_RENAME.is_empty());
+        assert!(!scripts::ITERM2_CLOSE.is_empty());
+        assert!(!scripts::TERMINAL_APP_CLOSE.is_empty());
     }
 }

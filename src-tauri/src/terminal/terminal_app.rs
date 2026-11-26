@@ -5,6 +5,7 @@
 //! 因此每個分頁的身分為「視窗 ID + 正規化後 tty」。
 //! 建立工作階段只支援開新視窗：AppleScript 無法在既有視窗開分頁或分割，
 //! 就地補開 zsh 也因此改開同工作區的新視窗。
+//! 關閉分頁則是關閉該分頁所屬的 AppleScript 視窗。
 
 use std::path::Path;
 use std::time::Duration;
@@ -22,8 +23,11 @@ use super::{
 /// 探索腳本每筆紀錄的欄位數。
 const DISCOVER_FIELDS: usize = 9;
 
-/// 聚焦腳本找到分頁時的回傳值。
-const FOCUS_OK: &str = "ok";
+/// 聚焦與關閉腳本找到分頁時的回傳值。
+const SCRIPT_OK: &str = "ok";
+
+/// 關閉腳本發現視窗不只 1 個分頁、因此未關閉時的回傳值。
+const CLOSE_MULTI_TABS: &str = "multi";
 
 /// 建立工作階段的逾時：Terminal.app 未執行時要先冷啟動，且腳本會等新分頁取得 tty。
 const CREATE_TIMEOUT: Duration = Duration::from_secs(20);
@@ -78,7 +82,7 @@ impl TerminalBackend for TerminalAppBackend {
         let window_arg = window_id.to_string();
         let tty_arg = format!("/dev/{tty}");
         let output = osascript::run(scripts::TERMINAL_APP_FOCUS, &[&window_arg, &tty_arg])?;
-        if output == FOCUS_OK {
+        if output == SCRIPT_OK {
             Ok(())
         } else {
             Err(CueError::ObjectNotFound)
@@ -103,6 +107,31 @@ impl TerminalBackend for TerminalAppBackend {
         let command = shell::cd_command(cwd)?;
         let output = osascript::run_with_timeout(scripts::TERMINAL_APP_CREATE, &[&command], CREATE_TIMEOUT)?;
         parse_created(&output).map(|_| ())
+    }
+
+    /// 關閉分頁。原生分頁在 AppleScript 中各自是一個視窗，關閉該視窗只會關閉這個分頁；
+    /// 視窗不只 1 個分頁時拒絕，避免連同其他分頁一起關閉。不切換焦點；
+    /// Terminal.app 未執行時回傳 `ObjectNotFound`。
+    fn close(&self, key: &SessionKey) -> Result<(), CueError> {
+        let SessionKey::TerminalApp { window_id, tty } = key else {
+            return Err(CueError::ObjectNotFound);
+        };
+        if *window_id <= 0 || normalize_tty(tty).as_deref() != Some(tty.as_str()) {
+            return Err(CueError::ObjectNotFound);
+        }
+        let window_arg = window_id.to_string();
+        let tty_arg = format!("/dev/{tty}");
+        let output = osascript::run(scripts::TERMINAL_APP_CLOSE, &[&window_arg, &tty_arg])?;
+        parse_close(&output)
+    }
+}
+
+/// 解析關閉腳本的回傳值。
+fn parse_close(output: &str) -> Result<(), CueError> {
+    match output {
+        SCRIPT_OK => Ok(()),
+        CLOSE_MULTI_TABS => Err(CueError::Script("Terminal.app 無法單獨關閉分頁".into())),
+        _ => Err(CueError::ObjectNotFound),
     }
 }
 
@@ -326,6 +355,52 @@ mod tests {
             backend.split_zsh(&key, SplitDirection::Below, Path::new("/tmp/a\nrm -rf ~")),
             Err(CueError::UnsafePath)
         );
+    }
+
+    #[test]
+    fn close_rejects_foreign_or_invalid_keys_without_running_script() {
+        let backend = TerminalAppBackend::new();
+        let foreign = SessionKey::Iterm2 { unique_id: "ABC".into() };
+        assert_eq!(backend.close(&foreign), Err(CueError::ObjectNotFound));
+        for (window_id, tty) in [(1, "/dev/ttys001"), (1, "ttys001\" & quit"), (1, ""), (0, "ttys001"), (-5, "ttys001")] {
+            let key = SessionKey::TerminalApp { window_id, tty: tty.into() };
+            assert_eq!(backend.close(&key), Err(CueError::ObjectNotFound), "{key}");
+        }
+    }
+
+    #[test]
+    fn close_refuses_windows_with_several_tabs() {
+        assert_eq!(parse_close("ok"), Ok(()));
+        assert_eq!(parse_close(""), Err(CueError::ObjectNotFound));
+        assert_eq!(parse_close("unexpected"), Err(CueError::ObjectNotFound));
+        let Err(CueError::Script(msg)) = parse_close("multi") else {
+            panic!("多分頁視窗應回傳錯誤");
+        };
+        assert_eq!(msg, "Terminal.app 無法單獨關閉分頁");
+    }
+
+    /// 本機手動：在 Terminal.app 以 Cmd+T 開 3 個分頁，在中間那個執行 `tty`，再執行
+    /// `CUE_CLOSE_TTY=ttysNNN cargo test -- --ignored terminal_app_close --nocapture`。
+    /// 確認只有該分頁被關閉，同群組其他分頁仍在。
+    #[test]
+    #[ignore = "操作本機 Terminal.app"]
+    fn terminal_app_close_local() {
+        let tty = std::env::var("CUE_CLOSE_TTY").expect("請以 CUE_CLOSE_TTY 指定要關閉的 tty（例如 ttys012）");
+        let backend = TerminalAppBackend::new();
+        let before = backend.discover().expect("探索失敗");
+        let target = before.iter().find(|s| s.tty == tty).unwrap_or_else(|| panic!("探索不到 {tty}"));
+        for s in &before {
+            println!("關閉前：{} | 視窗 #{} | {}", s.key, s.window_index, s.tty);
+        }
+
+        backend.close(&target.key).expect("關閉失敗");
+        std::thread::sleep(std::time::Duration::from_millis(800));
+        let after: Vec<_> = backend.discover().expect("探索失敗").into_iter().map(|s| s.key).collect();
+        assert!(!after.contains(&target.key), "分頁 {} 仍存在", target.key);
+        for s in before.iter().filter(|s| s.key != target.key) {
+            assert!(after.contains(&s.key), "其他分頁 {} 被一併關閉", s.key);
+        }
+        println!("只關閉了 {}，其餘 {} 個分頁不受影響", target.key, after.len());
     }
 
     /// 本機手動：`cargo test -- --ignored terminal_app_create --nocapture`

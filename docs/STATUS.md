@@ -70,7 +70,7 @@
 - [ ] **slice-3-2 工作階段管理** → `docs/slices/slice-3-2.md`
   - [x] 3-2-01 feat: 就地補開同工作區 Zsh
   - [x] 3-2-02a feat: 重新命名工作階段
-  - [ ] 3-2-02b feat: 關閉工作階段
+  - [x] 3-2-02b feat: 關閉工作階段
   - [ ] 3-2-03 feat: 重新開啟、移除與未歸類操作
 - [ ] **slice-3-3 選單與建立 Modal** → `docs/slices/slice-3-3.md`
   - [ ] 3-3-01 feat: 右鍵選單與節點操作

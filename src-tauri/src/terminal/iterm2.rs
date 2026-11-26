@@ -22,7 +22,7 @@ const DISCOVER_FIELDS: usize = 10;
 /// unique ID 的最大長度；iTerm2 目前是 36 字元的 UUID，保留餘裕。
 const UNIQUE_ID_MAX_LEN: usize = 64;
 
-/// 聚焦與重新命名腳本找到窗格時的回傳值。
+/// 聚焦、重新命名與關閉腳本找到窗格時的回傳值。
 const SCRIPT_OK: &str = "ok";
 
 /// 建立工作階段的逾時：iTerm2 未執行時要先冷啟動，常超過預設的 5 秒。
@@ -134,6 +134,23 @@ impl TerminalBackend for ITerm2Backend {
             return Err(CueError::InvalidLabel("不得含有換行或控制字元".into()));
         }
         let output = osascript::run(scripts::ITERM2_RENAME, &[unique_id.as_str(), name])?;
+        if output == SCRIPT_OK {
+            Ok(())
+        } else {
+            Err(CueError::ObjectNotFound)
+        }
+    }
+
+    /// 關閉窗格；分頁只剩這個窗格時 iTerm2 會一併關閉分頁。不切換焦點；
+    /// iTerm2 未執行時回傳 `ObjectNotFound`。
+    fn close(&self, key: &SessionKey) -> Result<(), CueError> {
+        let SessionKey::Iterm2 { unique_id } = key else {
+            return Err(CueError::ObjectNotFound);
+        };
+        if !is_valid_unique_id(unique_id) {
+            return Err(CueError::ObjectNotFound);
+        }
+        let output = osascript::run(scripts::ITERM2_CLOSE, &[unique_id.as_str()])?;
         if output == SCRIPT_OK {
             Ok(())
         } else {
@@ -355,6 +372,15 @@ mod tests {
     }
 
     #[test]
+    fn close_rejects_foreign_or_invalid_keys_without_running_script() {
+        let backend = ITerm2Backend::new();
+        let foreign = SessionKey::TerminalApp { window_id: 1, tty: "ttys001".into() };
+        assert_eq!(backend.close(&foreign), Err(CueError::ObjectNotFound));
+        let invalid = SessionKey::Iterm2 { unique_id: "x\" & quit".into() };
+        assert_eq!(backend.close(&invalid), Err(CueError::ObjectNotFound));
+    }
+
+    #[test]
     fn split_zsh_direction_follows_divider_naming() {
         assert_eq!(split_zsh_direction_arg(SplitDirection::Right), "vertical");
         assert_eq!(split_zsh_direction_arg(SplitDirection::Below), "horizontal");
@@ -477,6 +503,36 @@ mod tests {
         sleep(Duration::from_secs(2));
         assert!(!pwned.exists(), "注入的指令被執行了");
         println!("工作區：{}", ws.display());
+    }
+
+    /// 本機手動：`cargo test -- --ignored iterm2_close --nocapture`
+    /// 開一個只有 zsh 的新視窗後關閉它，確認探索不到該窗格，其他窗格不受影響。
+    #[test]
+    #[ignore = "操作本機 iTerm2"]
+    fn iterm2_close_local() {
+        use std::thread::sleep;
+
+        let backend = ITerm2Backend::new();
+        let spec = CreateSpec {
+            workspace_path: std::env::temp_dir(),
+            kind: SessionKindToCreate::Zsh,
+            label: None,
+            mode: OpenMode::NewWindow,
+            target_window: None,
+        };
+        let created = backend.create(&spec).expect("建立失敗");
+        sleep(Duration::from_millis(800));
+        let before: Vec<_> = backend.discover().expect("探索失敗").into_iter().map(|s| s.key).collect();
+        assert!(before.contains(&created.key), "探索不到新窗格 {}", created.key);
+
+        backend.close(&created.key).expect("關閉失敗");
+        sleep(Duration::from_millis(800));
+        let after: Vec<_> = backend.discover().expect("探索失敗").into_iter().map(|s| s.key).collect();
+        assert!(!after.contains(&created.key), "窗格 {} 仍存在", created.key);
+        let others: Vec<_> = before.into_iter().filter(|k| k != &created.key).collect();
+        assert!(others.iter().all(|k| after.contains(k)), "其他窗格不應被關閉");
+        assert_eq!(backend.close(&created.key), Err(CueError::ObjectNotFound));
+        println!("已關閉 {}，其餘 {} 個窗格不受影響", created.key, others.len());
     }
 
     /// 本機手動：`cargo test -- --ignored iterm2 --nocapture`

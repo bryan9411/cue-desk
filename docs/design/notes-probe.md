@@ -257,3 +257,31 @@ ttys025（npx 執行 gemini）
 
 - **結論**：16 個工作階段約 420 ms，**達成 < 500 ms 目標**，維持 2 秒輪詢。耗時改為主要隨**視窗數**增加（每個視窗固定 4 個 Apple Event），與窗格數關係不大；單一視窗、單一窗格時約 300 ms（含 `osascript` 啟動）。
 - **聚焦**（`iterm2_focus.applescript`）：實測分割窗格、背景視窗、最小化視窗（會先還原）都能聚焦到正確窗格，聚焦後 `current session of current window` 為目標；找不到的 unique ID 回傳空字串（`ObjectNotFound`）。
+
+---
+
+## Terminal.app 關閉原生分頁（2026-11-27）
+
+確認 001 第 3.3 節的待實機確認項目：關閉以 Cmd+T 開的原生分頁時，只關閉該分頁，不影響同群組的其他分頁。
+
+- **環境**：macOS 26.6.2、Terminal.app 2.15。測試前另有 1 個無關視窗（12879，`ttys001`），全程未受影響。
+- **情境**：以 `do script` 開一個新視窗，再以 Cmd+T 開 2 個分頁（手動按鍵：`osascript` 未取得輔助使用權限，無法以 System Events 送按鍵）。AppleScript 回報為 3 個視窗，每個 `count of tabs` 都是 1，`bounds` 相同：
+
+| 分頁順序 | window id | tty |
+|---|---|---|
+| 1 | 13291 | `ttys003` |
+| 2（中間） | 13294 | `ttys004` |
+| 3 | 13296 | `ttys005` |
+
+- **操作**：`CUE_CLOSE_TTY=ttys004 cargo test -- --ignored terminal_app_close --nocapture`（`TerminalAppBackend::close`，即 `terminal_app_close.applescript`）。
+- **結果**：
+  - 測試通過：關閉後探索不到 `13294:ttys004`，`ttys003`、`ttys005`、`ttys001` 都還在；`ttys004` 的 shell 已結束（`ps` 找不到該 tty）。
+  - 另外兩個分頁的 `bounds` 不變，仍是同一群組。
+  - 結論：**`close` 原生分頁對應的視窗只會關閉該分頁**，`capabilities().close_pane = true` 成立。
+- **殘留視窗物件**：關閉後 13294 仍出現在 `windows` 中，但 `visible` 為 false、`count of tabs` 為 0，約 10 秒後仍在；還原步驟關閉群組其他分頁後已不在。影響：
+  - 探索不會把它當成工作階段（沒有分頁就沒有紀錄），實測探索只列出 3 個分頁。
+  - 走訪時不能假設每個視窗都有 `tab 1`，否則會拋出 -1719（索引錯誤）。
+  - 對它執行關閉腳本回傳空字串（`ObjectNotFound`），不會出錯。
+- **其他回傳值**：視窗 ID 正確但 tty 不符時回傳空字串、不關閉。「視窗不只 1 個分頁時回傳 `multi`」在原生分頁下不會發生，未能實測。
+- **閒置 zsh** 關閉時 Terminal.app 不跳確認；程式執行中時的確認對話框未測。
+- **還原**：以同一支腳本關閉 13291、13296，Terminal.app 只剩原有的視窗 12879。

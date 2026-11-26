@@ -155,6 +155,36 @@ fn check_mode(caps: Capabilities, mode: OpenMode) -> Result<(), CueError> {
     }
 }
 
+/// 關閉工作階段（使用者主動操作）。程式仍在執行時交由終端機自己的確認機制。
+///
+/// 節點不在這裡標為已結束：使用者可能在確認對話框按取消，一律以探索結果為準。
+#[tauri::command]
+pub async fn close_session(app: AppHandle, id: String) -> Result<(), CueError> {
+    let state = app.state::<AppState>();
+    let key = {
+        let registry = lock(&state.registry);
+        let node = registry.get(&id).ok_or(CueError::ObjectNotFound)?;
+        if !node.alive {
+            return Err(CueError::SessionExited);
+        }
+        node.key.clone()
+    };
+    let backend = state.backend();
+    let result = tauri::async_runtime::spawn_blocking(move || backend.close(&key))
+        .await
+        .map_err(|e| CueError::Io(format!("關閉工作階段的工作異常結束：{e}")))?;
+    state.trigger_discovery();
+    already_closed_is_ok(result)
+}
+
+/// 窗格在探索之間已被關閉，和關閉成功的結果相同。
+fn already_closed_is_ok(result: Result<(), CueError>) -> Result<(), CueError> {
+    match result {
+        Err(CueError::ObjectNotFound) => Ok(()),
+        other => other,
+    }
+}
+
 /// 不支援分割的後端改開新視窗時，回給前端的提示。
 const SPLIT_FALLBACK_NOTICE: &str = "後備模式改以新視窗並排";
 
@@ -327,6 +357,15 @@ mod tests {
         let iterm = RenameRecorder { caps, renamed: Mutex::default() };
         assert_eq!(sync_title(&iterm, &key, "前端"), Ok(()));
         assert_eq!(*lock(&iterm.renamed), vec![(key, "前端".to_owned())]);
+    }
+
+    #[test]
+    fn closing_a_vanished_session_succeeds() {
+        assert_eq!(already_closed_is_ok(Ok(())), Ok(()));
+        assert_eq!(already_closed_is_ok(Err(CueError::ObjectNotFound)), Ok(()));
+        assert_eq!(already_closed_is_ok(Err(CueError::AutomationDenied)), Err(CueError::AutomationDenied));
+        let multi = Err(CueError::Script("Terminal.app 無法單獨關閉分頁".into()));
+        assert_eq!(already_closed_is_ok(multi.clone()), multi);
     }
 
     #[test]
