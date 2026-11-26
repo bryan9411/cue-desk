@@ -11,6 +11,7 @@
 
 - `docs/PROMPT.md`「三、…」第 2 點（就地補開 Zsh）與第 6 點最後的「關閉工作階段」
 - `docs/PROMPT.md`「二、…」第 3 點（未歸類區的兩個操作）、第 4 點（命名）、第 5 點（生命週期）
+- `docs/design/001-tech-decisions.md` 第 3.3 節（Terminal.app 分頁行為與關閉方式）
 
 ## 完成條件
 
@@ -35,14 +36,15 @@
 
 ### 3-2-02 feat: 重新命名與關閉工作階段
 - **UI**：否
-- **預計檔案**（6）：`src-tauri/src/terminal/scripts/iterm2_rename.applescript`、`src-tauri/src/terminal/scripts/iterm2_close.applescript`、`src-tauri/src/terminal/scripts/terminal_app_close.applescript`、`src-tauri/src/terminal/iterm2.rs`、`src-tauri/src/terminal/terminal_app.rs`、`src-tauri/src/commands.rs`
+- **預計檔案**（7）：`src-tauri/src/terminal/scripts/iterm2_rename.applescript`、`src-tauri/src/terminal/scripts/iterm2_close.applescript`、`src-tauri/src/terminal/scripts/terminal_app_close.applescript`、`src-tauri/src/terminal/iterm2.rs`、`src-tauri/src/terminal/terminal_app.rs`、`src-tauri/src/commands.rs`、`docs/design/notes-probe.md`
 - **實作重點**：
   - `rename_session(id, label)`：標籤寫入 `config.nodes[key].label`（空字串＝清除標籤，回到預設名稱）；iTerm2 後端同步 `set name of s to (item 2 of argv)`。若使用者的 shell 會覆寫標題，以 shell 為準，不另外處理。
   - 3-1-04 的 `create_session` 若帶標籤，建立後也呼叫一次 `rename`。
-  - `close_session(id)`：iTerm2 對該 session 送 `close`；若程式仍在執行，交由 iTerm2 自己的確認機制。Terminal.app 依 001 結論（關閉分頁或其所在視窗；多分頁時回傳提示）。
+  - `close_session(id)`：iTerm2 對該 session 送 `close`；若程式仍在執行，交由 iTerm2 自己的確認機制。
+  - Terminal.app（001 第 3.3 節）：原生分頁在 AppleScript 中各自是一個視窗，`close` 該視窗只會關閉這一個分頁。`terminal_app_close.applescript` 以 argv 接收視窗 ID 與 tty：找到視窗後確認其 tty 相符，且**該視窗只有 1 個分頁**才 `close`；不只 1 個分頁時（非原生分頁的情況）不關閉，回傳錯誤「Terminal.app 無法單獨關閉分頁」。程式仍在執行時交由 Terminal.app 自己的確認機制。
   - 關閉後觸發一次探索，節點依探索結果變為 `exited`。
   - 標籤長度上限（例如 64 字元），拒絕控制字元。
-- **驗證**：本機手動：重新命名後 iTerm2 分頁標題變更；關閉後 ≤ 3 秒節點變 `exited`。
+- **驗證**：本機手動：重新命名後 iTerm2 分頁標題變更；關閉後 ≤ 3 秒節點變 `exited`。Terminal.app：以 Cmd+T 開 3 個分頁，關閉中間那個，確認**只關閉該分頁**、同群組其他分頁不受影響（001 標示的待實機確認項目），結果記錄到 `docs/design/notes-probe.md`。
 
 ### 3-2-03 feat: 重新開啟、移除與未歸類操作
 - **UI**：否

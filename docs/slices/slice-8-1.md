@@ -10,6 +10,7 @@
 ## 必讀
 
 - `docs/PROMPT.md`「六、安裝、資安與發佈」第 2～4 點
+- `docs/design/001-tech-decisions.md` 第 9 節（最低 macOS 版本）
 
 ## 完成條件
 
@@ -30,10 +31,10 @@
 - **UI**：否
 - **預計檔案**（3）：`install.sh`、`src-tauri/tauri.conf.json`、`docs/design/002-release.md`
 - **實作重點**：
-  - `tauri.conf.json`：套用最終 `identifier`；明確設定 `bundle.macOS.minimumSystemVersion`（依 001 調查的 Tauri v2 最低需求），install.sh 使用同一個值。
+  - `tauri.conf.json`：套用最終 `identifier`；明確設定 `bundle.macOS.minimumSystemVersion` 為 **`"26.0"`**（001 第 9 節：只支援實測過的 macOS 26），install.sh 使用同一個值。
   - `install.sh` 規格：
     - 全部邏輯包在 `main()` 函式內，**最後一行才呼叫 `main "$@"`**（避免下載不完整時執行到一半）；`set -euo pipefail`。
-    - 檢查系統為 macOS（`uname -s` = `Darwin`）且 `sw_vers -productVersion` ≥ 最低版本，否則中止並說明。
+    - 檢查系統為 macOS（`uname -s` = `Darwin`）且 `sw_vers -productVersion` ≥ `26.0`（比較主版本號），否則中止並說明「Cue 需要 macOS 26 以上」。
     - 預設下載 `https://github.com/<OWNER>/<REPO>/releases/latest/download/Cue-macos-universal.zip` 與其 `.sha256`；環境變數 `CUE_VERSION=vX.Y.Z` 時改為 `releases/download/<版本>/…`（驗證格式 `^v[0-9]+\.[0-9]+\.[0-9]+`）。
     - 下載到 `mktemp -d` 暫存目錄（`curl -fsSL`），以 `shasum -a 256 -c` 驗證，不符即中止；以 `trap` 在結束時清除暫存目錄。
     - 若 Cue 正在執行，先 `osascript -e 'quit app "Cue"'` 並等待結束（最多數秒）。
@@ -42,7 +43,7 @@
     - 偵測 iTerm2（`/Applications/iTerm.app` 或 `mdfind "kMDItemCFBundleIdentifier == 'com.googlecode.iterm2'"`）、`claude`、`gemini`（`command -v`）；未安裝的只**印出**官方安裝方式提示，**不自動安裝任何東西**。
     - 最後 `open` 啟動 App，並印出 README「Hook 設定」段落網址（`https://github.com/<OWNER>/<REPO>#hook-設定`）；**不自動修改使用者的設定檔**。
     - 同一支腳本重跑即為更新。
-  - `002-release.md`：記錄 OWNER／REPO、Bundle ID、最低系統版本。
+  - `002-release.md`：記錄 OWNER／REPO、Bundle ID、最低系統版本（`26.0`，依據 001 第 9 節）。
 - **驗證**：`bash -n install.sh`、`shellcheck install.sh`；以本機 `pnpm tauri build` 產物手動打包 zip＋sha256，設定暫時環境變數（例如 `CUE_DOWNLOAD_BASE=file://…`，僅供測試、README 不記載）跑一次完整流程。
 
 ### 8-1-02 feat: uninstall.sh

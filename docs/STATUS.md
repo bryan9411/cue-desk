@@ -35,10 +35,10 @@
   - [x] 1-2-03 spike: 前景程式工作目錄取得方式探針
   - [x] 1-2-04 docs: 外部依賴與協定調查筆記
   - [x] 👤 1-2-H1 在 iTerm2／Terminal.app 準備情境並回報探針輸出
-- [ ] **slice-1-3 技術決策** → `docs/slices/slice-1-3.md`
+- [x] **slice-1-3 技術決策** → `docs/slices/slice-1-3.md`
   - [x] 👤 1-3-H1 決定 api.proto 與通知外掛的處理方式
   - [x] 1-3-01a docs: 加入技術決策紀錄
-  - [ ] 1-3-01b docs: 依技術決策更新實作說明
+  - [x] 1-3-01b docs: 依技術決策更新實作說明
 
 ## slice-2 探索與認領（M1）
 
