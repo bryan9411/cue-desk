@@ -38,12 +38,19 @@ function node(id: string, workspaceId: string | null, windowId: number, tabIndex
 }
 
 function snapshot(partial: Partial<Snapshot> = {}): Snapshot {
-  return { workspaces: [], sessions: [], unclassified: [], backend, ...partial };
+  return { workspaces: [], sessions: [], unclassified: [], backend, preferredOpenMode: null, ...partial };
 }
 
 describe("applySnapshot", () => {
   beforeEach(() => {
-    useCue.setState({ workspaces: [], sessions: {}, unclassified: [], backend: null, lastError: null });
+    useCue.setState({
+      workspaces: [],
+      sessions: {},
+      unclassified: [],
+      backend: null,
+      preferredOpenMode: null,
+      lastError: null,
+    });
   });
 
   it("以 id 為 key 存放節點並寫入後端資訊", () => {
@@ -52,6 +59,14 @@ describe("applySnapshot", () => {
     expect(Object.keys(s.sessions).sort()).toEqual(["a", "b"]);
     expect(s.sessions.b.tabIndex).toBe(2);
     expect(s.backend).toEqual(backend);
+  });
+
+  it("寫入預設開啟方式，之後的快照沒有設定時清回 null", () => {
+    const { applySnapshot } = useCue.getState();
+    applySnapshot(snapshot({ preferredOpenMode: "aiLeftZshRight" }));
+    expect(useCue.getState().preferredOpenMode).toBe("aiLeftZshRight");
+    applySnapshot(snapshot());
+    expect(useCue.getState().preferredOpenMode).toBeNull();
   });
 
   it("依工作區分組，工作區維持設定檔順序，空工作區也列出", () => {

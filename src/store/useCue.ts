@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { OpenMode } from "../ipc/api";
 import type { BackendInfo, Capabilities, CueError, SessionNode, Snapshot, Workspace } from "../types";
 
 // 所有 session 狀態更新只經由 applySnapshot()，不要在別處直接改 sessions。
@@ -11,6 +12,8 @@ export interface CueState {
   unclassified: string[];
   /** 尚未取得快照前為 `null`。 */
   backend: BackendInfo | null;
+  /** 建立工作階段 Modal 的預設開啟方式；沒有設定也沒用過時為 `null`。 */
+  preferredOpenMode: OpenMode | null;
   /** 最近一次全域錯誤（例如無法取得快照）；個別節點的操作錯誤由元件自行顯示。 */
   lastError: CueError | null;
   /** 建立工作階段 Modal 要預選的工作區；`null` 為未開啟。 */
@@ -28,6 +31,7 @@ export const useCue = create<CueState>()((set) => ({
   sessions: {},
   unclassified: [],
   backend: null,
+  preferredOpenMode: null,
   lastError: null,
   createModal: null,
 
@@ -39,6 +43,7 @@ export const useCue = create<CueState>()((set) => ({
       sessions,
       unclassified: snapshot.unclassified,
       backend: snapshot.backend,
+      preferredOpenMode: snapshot.preferredOpenMode,
     });
   },
   setLastError: (lastError) => set({ lastError }),

@@ -34,6 +34,7 @@ function snap(tag: string): Snapshot {
       installed: { iterm2: true, terminalApp: true },
       fallback: null,
     },
+    preferredOpenMode: null,
   };
 }
 

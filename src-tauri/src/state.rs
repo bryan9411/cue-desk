@@ -15,7 +15,7 @@ use crate::registry::{Registry, SessionNode};
 use crate::terminal::detect::{self, BackendPref, BackendSelection, FallbackReason, TerminalApp};
 use crate::terminal::iterm2::ITerm2Backend;
 use crate::terminal::terminal_app::TerminalAppBackend;
-use crate::terminal::{Capabilities, TerminalBackend};
+use crate::terminal::{Capabilities, OpenMode, TerminalBackend};
 
 /// 取得鎖；持有者 panic 過也照常取得（狀態仍可用，不讓整個 App 跟著停擺）。
 pub fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -63,6 +63,8 @@ pub struct Snapshot {
     /// 「未歸類」區要顯示的節點 id（已排除忽略清單與已結束的節點）。
     pub unclassified: Vec<String>,
     pub backend: BackendInfo,
+    /// 建立工作階段 Modal 的預設開啟方式（`defaultOpenMode`，其次上次用過的）；都沒有時為 `None`。
+    pub preferred_open_mode: Option<OpenMode>,
 }
 
 /// 依設定檔與登錄組出快照（純函式，方便測試）。
@@ -81,6 +83,7 @@ pub fn build_snapshot(config: &CueConfig, registry: &Registry, backend: BackendI
         sessions: registry.nodes().to_vec(),
         unclassified: registry.unclassified(&config.ignored).map(|n| n.id.clone()).collect(),
         backend,
+        preferred_open_mode: config.preferred_open_mode(),
     }
 }
 
@@ -275,6 +278,19 @@ mod tests {
         assert_eq!(v["backend"]["id"], "iterm2");
         assert_eq!(v["backend"]["installed"], json!({ "iterm2": true, "terminalApp": true }));
         assert_eq!(v["backend"]["fallback"], json!(null));
+        assert_eq!(v["preferredOpenMode"], json!(null));
+    }
+
+    #[test]
+    fn snapshot_carries_preferred_open_mode() {
+        let mut config = CueConfig::default();
+        config.set_last_open_mode(OpenMode::NewTab);
+        let snap = build_snapshot(&config, &Registry::new(), backend_info());
+        assert_eq!(serde_json::to_value(&snap).unwrap()["preferredOpenMode"], json!("newTab"));
+
+        config.preferences.insert("defaultOpenMode".into(), json!("aiTopZshBottom"));
+        let snap = build_snapshot(&config, &Registry::new(), backend_info());
+        assert_eq!(snap.preferred_open_mode, Some(OpenMode::AiTopZshBottom));
     }
 
     #[test]

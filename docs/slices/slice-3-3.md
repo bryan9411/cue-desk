@@ -34,7 +34,17 @@
   - `api.ts` 補上 3-1／3-2 的所有 command 包裝。
 - **驗證**：`pnpm build`；本機逐項操作選單；切到 Terminal.app 後備模式確認停用項目與說明。
 
-### 3-3-02 feat: 建立工作階段 Modal 與多 AI 防呆
+### 3-3-02a feat: 快照帶出建立工作階段的預設開啟方式
+- **UI**：否
+- **預計檔案**（4）：`src-tauri/src/state.rs`、`src/types.ts`、`src/store/useCue.ts`、`src/__tests__/useCue.test.ts`
+- **實作重點**：
+  - 前端原本拿不到設定檔中的 `defaultOpenMode`／`lastOpenMode`，Modal 無法決定預設開啟方式，因此從 3-3-02 拆出。
+  - `Snapshot` 加 `preferredOpenMode`（`Option<OpenMode>`），由 `build_snapshot` 以 `CueConfig::preferred_open_mode()` 填入（`defaultOpenMode` 優先，其次 `lastOpenMode`；不認得的值視為沒有設定）。
+  - 前端 `Snapshot` 型別加 `preferredOpenMode: OpenMode | null`；`applySnapshot` 存進 store。
+  - 建立工作階段後 `lastOpenMode` 變動會讓快照不同，探索迴圈照常送出新快照，前端自然更新。
+- **驗證**：`cargo test`（快照序列化含 `preferredOpenMode`）；Vitest 測 `applySnapshot` 存下該值；`pnpm verify`。
+
+### 3-3-02b feat: 建立工作階段 Modal 與多 AI 防呆
 - **UI**：是
 - **預計檔案**（6）：`src/components/CreateSessionModal.tsx`、`src/components/WarningBadge.tsx`、`src/lib/workspaceStats.ts`、`src/lib/__tests__/workspaceStats.test.ts`、`src/components/sidebar/WorkspaceNode.tsx`、`src/App.tsx`
 - **實作重點**：
@@ -42,7 +52,7 @@
   - `WarningBadge`：細線 SVG 警示三角形＋數字（「2 AI」），`activeAiCount >= 2` 時顯示在工作區名稱旁，色彩用 `--status-waiting`，`title` 說明原因。**不使用 emoji**。
   - **Modal**（原生 `<dialog>`，`showModal()`；Esc 關閉、焦點鎖定、開啟時聚焦第一個欄位）：
     - 欄位：工作區（下拉，預設為觸發的工作區）、類型（`claude`／`gemini`／`zsh`）、自訂標籤（例如「權限架構」、「Q3 財報精讀」）、開啟方式（新視窗／新分頁／AI 上・Zsh 下／AI 左・Zsh 右）。
-    - 開啟方式預設：`defaultOpenMode` → `lastOpenMode` → 新視窗。
+    - 開啟方式預設：store 的 `preferredOpenMode`（3-3-02a，`defaultOpenMode` → `lastOpenMode`）→ 新視窗；後端不支援該方式時退回新視窗。
     - Terminal.app 後備模式：只能選「新視窗」，其他選項停用並說明「終端機（Terminal.app）不支援分割，也無法不透過模擬按鍵開新分頁」。
     - `zsh` 類型時「AI 上／Zsh 下」「AI 左／Zsh 右」停用。
     - **防呆提醒**：所選工作區 `activeAiCount >= 1` 且類型為 AI 時，顯示溫和提醒：「這個資料夾已有 AI 正在工作。同一資料夾只有單一分支，多個 AI 同時修改檔案可能互相覆蓋，建議先分工（例如各自負責不同檔案）。」

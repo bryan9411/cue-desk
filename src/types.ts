@@ -1,4 +1,5 @@
 // 前端領域型別，欄位必須與 Rust 端經 IPC 送來的格式一致；兩邊不同時以 Rust 為準。
+import type { OpenMode } from "./ipc/api";
 
 /** 工作階段狀態。`running`／`waiting`／`done` 只由 Hook 驅動。 */
 export type Status = "idle" | "running" | "waiting" | "done" | "exited";
@@ -73,6 +74,8 @@ export interface Snapshot {
   /** 「未歸類」區要顯示的節點 id（已排除忽略清單與已結束的節點）。 */
   unclassified: string[];
   backend: BackendInfo;
+  /** 建立工作階段的預設開啟方式（設定的預設值，其次上次用過的）；都沒有時為 `null`。 */
+  preferredOpenMode: OpenMode | null;
 }
 
 /** Rust `CueError::kind()` 的固定代碼；`unknown` 為前端無法辨識的錯誤。 */
