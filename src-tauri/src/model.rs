@@ -5,7 +5,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 
 /// 終端機 App 回報的視窗 ID（AppleScript `id of window`）。
 /// 同一次終端機執行期間穩定，是**視窗身分**；視窗序號只用於顯示。
@@ -17,8 +17,8 @@ pub type ScreenIndex = usize;
 /// 工作階段中執行的程式類型。
 ///
 /// 序列化為 `{ "type": "claude" }`；`Other` 為 `{ "type": "other", "name": "vim" }`，
-/// `name` 是前景程式的執行檔名稱，只用於顯示。
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+/// `name` 是前景程式的執行檔名稱，只用於顯示。設定檔以相同格式記錄最後已知類型。
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(tag = "type", content = "name", rename_all = "lowercase")]
 pub enum SessionKind {
     Claude,
@@ -206,6 +206,10 @@ mod tests {
             serde_json::to_value(SessionKind::Other("vim".into())).unwrap(),
             json!({ "type": "other", "name": "vim" })
         );
+        for kind in [SessionKind::Gemini, SessionKind::Other("npm".into())] {
+            let v = serde_json::to_value(&kind).unwrap();
+            assert_eq!(serde_json::from_value::<SessionKind>(v).unwrap(), kind);
+        }
     }
 
     #[test]

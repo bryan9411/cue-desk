@@ -52,7 +52,7 @@
   - [x] 2-2-02 feat: 實作 ITerm2Backend 的探索與聚焦
   - [x] 2-2-03 feat: 實作 TerminalAppBackend 的探索與聚焦
 - [ ] **slice-2-3 探索迴圈與設定** → `docs/slices/slice-2-3.md`
-  - [ ] 2-3-01 feat: 設定檔模型與原子寫入
+  - [x] 2-3-01 feat: 設定檔模型與原子寫入
   - [ ] 2-3-02 feat: 合併探索結果並管理節點生命週期
   - [ ] 2-3-03 feat: 每 2 秒探索迴圈與 IPC 指令、事件
 - [ ] **slice-2-4 基礎側邊欄** → `docs/slices/slice-2-4.md`

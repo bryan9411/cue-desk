@@ -1,4 +1,5 @@
 pub mod attribution;
+pub mod config;
 pub mod error;
 pub mod model;
 pub mod osascript;
