@@ -1,3 +1,4 @@
+pub mod attribution;
 pub mod error;
 pub mod model;
 pub mod osascript;

@@ -42,11 +42,11 @@
 
 ## slice-2 探索與認領（M1）
 
-- [ ] **slice-2-1 領域模型與程序解析** → `docs/slices/slice-2-1.md`
+- [x] **slice-2-1 領域模型與程序解析** → `docs/slices/slice-2-1.md`
   - [x] 2-1-01 feat: 定義工作階段領域型別與 TerminalBackend trait
   - [x] 2-1-02 feat: 解析 ps 輸出並判斷前景程式與類型
   - [x] 2-1-03 feat: 取得前景程式的工作目錄
-  - [ ] 2-1-04 feat: 以 realpath 最長前綴歸屬工作區
+  - [x] 2-1-04 feat: 以 realpath 最長前綴歸屬工作區
 - [ ] **slice-2-2 終端機後端** → `docs/slices/slice-2-2.md`
   - [ ] 2-2-01 feat: 偵測已安裝的終端機與執行狀態
   - [ ] 2-2-02 feat: 實作 ITerm2Backend 的探索與聚焦

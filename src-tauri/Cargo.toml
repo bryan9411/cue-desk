@@ -24,6 +24,10 @@ tauri-plugin-dialog = "2"
 # MIT OR Apache-2.0；以 proc_pidinfo 取前景程式 cwd
 libc = "0.2"
 
+[dev-dependencies]
+# MIT OR Apache-2.0；歸屬測試建立暫存目錄
+tempfile = "3"
+
 [profile.release]
 codegen-units = 1
 lto = true
