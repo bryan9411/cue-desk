@@ -33,6 +33,8 @@ pub enum CueError {
     WorkspaceNotFound,
     /// 無法加入工作區（路徑不存在或不是資料夾），內容為原因。
     InvalidWorkspace(String),
+    /// 路徑含換行或其他控制字元（或不是合法 UTF-8），不能安全送入終端機。
+    UnsafePath,
 }
 
 impl CueError {
@@ -49,6 +51,7 @@ impl CueError {
             CueError::SessionExited => "session_exited",
             CueError::WorkspaceNotFound => "workspace_not_found",
             CueError::InvalidWorkspace(_) => "invalid_workspace",
+            CueError::UnsafePath => "unsafe_path",
         }
     }
 
@@ -98,6 +101,7 @@ impl fmt::Display for CueError {
             CueError::SessionExited => write!(f, "這個工作階段已結束"),
             CueError::WorkspaceNotFound => write!(f, "找不到指定的工作區"),
             CueError::InvalidWorkspace(msg) => write!(f, "無法加入工作區：{msg}"),
+            CueError::UnsafePath => write!(f, "路徑含有換行或控制字元，無法安全送入終端機"),
         }
     }
 }
@@ -169,5 +173,8 @@ mod tests {
         let json = serde_json::to_value(CueError::InvalidWorkspace("不是資料夾".into())).unwrap();
         assert_eq!(json["kind"], "invalid_workspace");
         assert_eq!(json["message"], "無法加入工作區：不是資料夾");
+
+        let json = serde_json::to_value(CueError::UnsafePath).unwrap();
+        assert_eq!(json["kind"], "unsafe_path");
     }
 }

@@ -88,6 +88,7 @@ export type CueErrorKind =
   | "session_exited"
   | "workspace_not_found"
   | "invalid_workspace"
+  | "unsafe_path"
   | "unknown";
 
 export interface CueError {

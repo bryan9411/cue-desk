@@ -7,6 +7,7 @@ pub mod model;
 pub mod osascript;
 pub mod process;
 pub mod registry;
+pub mod shell;
 pub mod state;
 pub mod terminal;
 
