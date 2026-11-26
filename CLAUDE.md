@@ -21,7 +21,7 @@ Cue 是 macOS 原生的多工作區 AI CLI 指揮中心：Tauri v2（Rust）+ Re
 
 1. 用 `grep -n -m1 -E '^  - \[ \]' docs/STATUS.md` 找第一個未勾選的項目，**不要整份讀 STATUS.md**。從編號推得切片文件：`X-Y-NN` → `docs/slices/slice-X-Y.md`；`X-0-NN` → `docs/slices/slice-X.md`；人工項目 `X-Y-H1` 同樣對應 `slice-X-Y.md`。
 2. 如果是 👤 人工項目：**不要實作**。說明需要使用者做什麼、完成後要提供什麼，然後停下。使用者回報完成後，把他提供的資訊記到切片文件指定的位置（例如 `docs/design/`），再勾選該項。
-3. 只讀那一支切片文件與它「必讀」列出的資料，**不讀其他切片文件**。需要了解既有程式碼時直接讀原始碼。
+3. 只讀那一支切片文件與它「必讀」列出的資料，**不讀其他切片文件**。需要了解既有程式碼時，**先用 CodeGraph**（見下方「程式碼查詢」），不要直接 grep／Read。
 4. 只實作這一個 Commit。檔案數超過上限（8 支）時先停下，提出拆成 `a`、`b`、`c` 的方案（例如 `2-3-01a`、`2-3-01b`），使用者同意後更新 STATUS.md 與切片文件再繼續。切片文件標示「**UI：是**」時，先啟用 frontend-design skill。
 5. 執行切片文件的「驗證」，以及專案的檢查：`pnpm verify`（1-1-04 完成後可用；之前改為分別執行 `cargo check`、`cargo clippy`、`pnpm build`）。
 6. 在 STATUS.md 勾選這個 Commit；子切片的最後一個 Commit 也勾選子切片那一行。只讀該行附近（步驟 1 的行號搭配 offset／limit）再修改，和程式碼放在同一個 commit。
@@ -32,10 +32,20 @@ Cue 是 macOS 原生的多工作區 AI CLI 指揮中心：Tauri v2（Rust）+ Re
 
    等使用者同意才 commit，**不要 push**。
 
+## 程式碼查詢：優先使用 CodeGraph
+
+本專案已建 CodeGraph 索引（`.codegraph/`）。查詢、理解或修改**原始碼**時一律先用它：
+
+- **第一步**：呼叫 MCP 工具 `codegraph_explore`（若是延遲載入，先用 ToolSearch `select:mcp__codegraph__codegraph_explore` 載入）。查詢可以是自然語言問題，或一串符號／檔名（例如 `TerminalBackend iterm2.rs capabilities`）。
+- **修改前**：把要改的檔案或符號名稱放進查詢，取得行號原始碼與影響範圍後直接 Edit，不需要再 Read 同一段。
+- **不要**在 CodeGraph 之前先 grep／find／Read 原始碼，也不要用 grep 重新驗證它的結果。
+- MCP 工具不可用時改用 shell：`codegraph explore "<符號或問題>"`。
+- 只有 CodeGraph 沒涵蓋的內容才直接讀：`docs/`、設定檔（`*.json`、`*.toml`、`*.plist`）、AppleScript 腳本，或剛寫入、索引尚未更新（約 1 秒延遲）的檔案。
+
 ## 節省讀取量
 
 - `docs/PROMPT.md` 的章節是 `###` 標題：先用 `grep -n '^### ' docs/PROMPT.md` 找章節行號，再用 offset／limit 只讀需要的段落。
-- 大型原始碼先 grep 再讀需要的範圍。
+- 原始碼用 CodeGraph 取得需要的符號，不要整份讀大型檔案。
 - 不要為了「了解全貌」去讀其他切片文件或整份 STATUS.md。
 
 ## 檔案數計算
