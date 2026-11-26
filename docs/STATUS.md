@@ -27,7 +27,7 @@
 - [ ] **slice-1-1 專案骨架** → `docs/slices/slice-1-1.md`
   - [x] 1-1-01 chore: 初始化 Tauri v2 + React + TypeScript 專案
   - [x] 1-1-02 chore: 加入 Tailwind CSS、Zustand 與 Vitest
-  - [ ] 1-1-03 chore: 設定 CSP、最小權限 capabilities 與自動化權限宣告
+  - [x] 1-1-03 chore: 設定 CSP、最小權限 capabilities 與自動化權限宣告
   - [ ] 1-1-04 chore: 加入 verify 檢查指令
 - [ ] **slice-1-2 技術探針** → `docs/slices/slice-1-2.md`
   - [ ] 1-2-01 feat: osascript 執行器與分隔字元解析
