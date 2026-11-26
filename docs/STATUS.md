@@ -25,7 +25,7 @@
 ## slice-1 技術驗證與專案骨架
 
 - [ ] **slice-1-1 專案骨架** → `docs/slices/slice-1-1.md`
-  - [ ] 1-1-01 chore: 初始化 Tauri v2 + React + TypeScript 專案
+  - [x] 1-1-01 chore: 初始化 Tauri v2 + React + TypeScript 專案
   - [ ] 1-1-02 chore: 加入 Tailwind CSS、Zustand 與 Vitest
   - [ ] 1-1-03 chore: 設定 CSP、最小權限 capabilities 與自動化權限宣告
   - [ ] 1-1-04 chore: 加入 verify 檢查指令
