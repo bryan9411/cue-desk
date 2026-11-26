@@ -11,11 +11,14 @@ use crate::error::CueError;
 use crate::model::{Bounds, DiscoveredSession, ScreenIndex, SessionKey, SessionKind, WindowId};
 
 pub mod detect;
+pub mod iterm2;
 
 /// 固定的 AppleScript 腳本原文。變動資料一律經由 `on run argv` 傳入。
 pub mod scripts {
     /// 列出 iTerm2 所有窗格；iTerm2 未執行時回傳空字串。
     pub const ITERM2_DISCOVER: &str = include_str!("scripts/iterm2_discover.applescript");
+    /// 聚焦 iTerm2 的指定窗格；argv：unique ID。找到回傳 `ok`，否則空字串。
+    pub const ITERM2_FOCUS: &str = include_str!("scripts/iterm2_focus.applescript");
     /// 列出 Terminal.app 所有分頁；Terminal.app 未執行時回傳空字串。
     pub const TERMINAL_APP_DISCOVER: &str =
         include_str!("scripts/terminal_app_discover.applescript");
@@ -219,6 +222,7 @@ mod tests {
     #[test]
     fn scripts_are_embedded() {
         assert!(!scripts::ITERM2_DISCOVER.is_empty());
+        assert!(!scripts::ITERM2_FOCUS.is_empty());
         assert!(!scripts::TERMINAL_APP_DISCOVER.is_empty());
     }
 }

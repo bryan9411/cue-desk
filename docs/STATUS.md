@@ -49,7 +49,7 @@
   - [x] 2-1-04 feat: 以 realpath 最長前綴歸屬工作區
 - [ ] **slice-2-2 終端機後端** → `docs/slices/slice-2-2.md`
   - [x] 2-2-01 feat: 偵測已安裝的終端機與執行狀態
-  - [ ] 2-2-02 feat: 實作 ITerm2Backend 的探索與聚焦
+  - [x] 2-2-02 feat: 實作 ITerm2Backend 的探索與聚焦
   - [ ] 2-2-03 feat: 實作 TerminalAppBackend 的探索與聚焦
 - [ ] **slice-2-3 探索迴圈與設定** → `docs/slices/slice-2-3.md`
   - [ ] 2-3-01 feat: 設定檔模型與原子寫入

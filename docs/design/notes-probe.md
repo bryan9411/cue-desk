@@ -236,3 +236,24 @@ ttys025（npx 執行 gemini）
 - 結束 Terminal.app（測試前未執行）。
 - `npx` 使用 scratchpad 內的臨時 npm 快取（`npm_config_cache`），測完整個刪除；`~/.npm/_npx` 未變動。
 - `gemini` 首次在 cue-desk 執行時寫入 `~/.gemini`：已刪除 `history/cue-desk`、`tmp/cue-desk`，從 `projects.json` 移除 cue-desk，`state.json` 還原為 `state.json.bak` 的內容。`oauth_creds.json` 被 `gemini` 刷新了登入權杖，為避免登入失效**未還原**。
+
+---
+
+## 批次取值後重新量測（2026-11-26）
+
+正式腳本 `iterm2_discover.applescript` 改為批次取值後，以 `probe_discover` 的情境重新量測。
+
+- **寫法**：先以 `id of windows` 取回所有視窗 ID；每個視窗以 `window id` 參照，送 4 個 Apple Event：`bounds of w`、`unique ID of sessions of tabs of w`、`tty of sessions of tabs of w`、`name of sessions of tabs of w`（後三者回傳「分頁 → 窗格」的巢狀清單）。輸出欄位與 001 第 3.1 節相同。
+- **競態處理**：以視窗 ID 參照，避免視窗前後順序在取值之間變動而錯位；同一視窗三份清單形狀不一致時略過該視窗，下一輪再取；視窗在取值期間關閉（-1728）時略過，其他錯誤（例如 -1743 權限）照常拋出。
+- **情境**：iTerm2 3 個視窗共 16 個工作階段（視窗 A：分頁 1 三個分割窗格＋分頁 2–7；視窗 B：6 個分頁；原有視窗 1 個分頁）。以 AppleScript 建立兩個測試視窗，量測後關閉。
+- **耗時**（同一台機器、同一組視窗）：
+
+| 腳本 | #1 | #2 | #3 |
+|---|---|---|---|
+| 舊版（逐一讀取，探針腳本） | 1330 ms | 1340 ms | 1350 ms |
+| 新版（批次取值，`osascript` 直接執行） | 430 ms | 420 ms | 420 ms |
+| 新版（`probe_discover`） | 409.1 ms | 427.9 ms | 431.0 ms |
+| 新版（`ITerm2Backend::discover()`，含執行狀態檢查與解析） | 413.0 ms | — | — |
+
+- **結論**：16 個工作階段約 420 ms，**達成 < 500 ms 目標**，維持 2 秒輪詢。耗時改為主要隨**視窗數**增加（每個視窗固定 4 個 Apple Event），與窗格數關係不大；單一視窗、單一窗格時約 300 ms（含 `osascript` 啟動）。
+- **聚焦**（`iterm2_focus.applescript`）：實測分割窗格、背景視窗、最小化視窗（會先還原）都能聚焦到正確窗格，聚焦後 `current session of current window` 為目標；找不到的 unique ID 回傳空字串（`ObjectNotFound`）。
