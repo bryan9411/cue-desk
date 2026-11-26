@@ -1,0 +1,29 @@
+{
+  "$schema": "https://unpkg.com/release-it@21/schema/release-it.json",
+  "git": {
+    "commitMessage": "chore: 發佈 v${version}",
+    "tagName": "v${version}",
+    "tagAnnotation": "v${version}",
+    "requireCleanWorkingDir": true,
+    "requireUpstream": false,
+    "push": false
+  },
+  "github": {
+    "release": false
+  },
+  "npm": false,
+  "hooks": {
+    "before:init": "pnpm verify",
+    "after:bump": "cargo update --manifest-path src-tauri/Cargo.toml --offline --package cue"
+  },
+  "plugins": {
+    "@release-it/bumper": {
+      "in": { "file": "package.json", "path": "version" },
+      "out": [
+        { "file": "package.json", "path": "version" },
+        { "file": "src-tauri/tauri.conf.json", "path": "version" },
+        { "file": "src-tauri/Cargo.toml", "type": "application/toml", "path": "package.version" }
+      ]
+    }
+  }
+}
